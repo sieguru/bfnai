@@ -12,7 +12,7 @@
       <!-- Logo/Title -->
       <div class="flex items-center">
         <font-awesome-icon icon="file-word" class="text-blue-600 text-2xl mr-3" />
-        <h1 class="text-xl font-semibold text-gray-900">Bokföringsnämndens normgivning</h1>
+        <h1 class="text-xl font-semibold text-gray-900">{{ $t('app.title') }}</h1>
       </div>
 
       <!-- Right side -->
@@ -23,6 +23,7 @@
             {{ statusLabel }}
           </span>
         </span>
+        <LanguageSwitcher />
       </div>
     </div>
   </header>
@@ -32,9 +33,13 @@
 
 <script>
 import { getHealth } from '@/services/api'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
 
 export default {
   name: 'AppHeader',
+  components: {
+    LanguageSwitcher,
+  },
   emits: ['toggle-sidebar'],
   data() {
     return {
@@ -43,14 +48,15 @@ export default {
   },
   computed: {
     statusLabel() {
-      const labels = {
+      const statusKeys = {
         'healthy': 'connected',
-        'partial': 'DB only',
+        'partial': 'dbOnly',
         'error': 'error',
         'disconnected': 'offline',
-        'checking...': 'checking...',
+        'checking...': 'checking',
       }
-      return labels[this.healthStatus] || this.healthStatus
+      const key = statusKeys[this.healthStatus] || this.healthStatus
+      return this.$t(`status.${key}`)
     },
     statusColorClass() {
       const colors = {

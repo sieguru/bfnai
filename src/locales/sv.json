@@ -1,0 +1,34 @@
+{
+  "app": {
+    "title": "Bokföringsnämndens normgivning"
+  },
+  "nav": {
+    "dashboard": "Översikt",
+    "documents": "Dokument",
+    "chunks": "Segment",
+    "search": "Sök",
+    "agent": "AI-assistent"
+  },
+  "status": {
+    "connected": "ansluten",
+    "dbOnly": "endast DB",
+    "error": "fel",
+    "offline": "offline",
+    "checking": "kontrollerar..."
+  },
+  "sidebar": {
+    "documents": "Dokument:",
+    "chunks": "Segment:"
+  },
+  "common": {
+    "loading": "Laddar...",
+    "error": "Ett fel uppstod",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "delete": "Radera",
+    "edit": "Redigera",
+    "close": "Stäng",
+    "search": "Sök",
+    "noResults": "Inga resultat"
+  }
+}

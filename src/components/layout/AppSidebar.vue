@@ -24,7 +24,7 @@
         @click="$emit('close')"
       >
         <font-awesome-icon :icon="item.icon" class="w-5 h-5 mr-3" />
-        <span>{{ item.label }}</span>
+        <span>{{ $t(`nav.${item.labelKey}`) }}</span>
       </router-link>
     </nav>
 
@@ -32,11 +32,11 @@
     <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
       <div class="text-xs text-gray-500 space-y-1">
         <div class="flex justify-between">
-          <span>Documents:</span>
+          <span>{{ $t('sidebar.documents') }}</span>
           <span class="font-medium">{{ stats.documents }}</span>
         </div>
         <div class="flex justify-between">
-          <span>Chunks:</span>
+          <span>{{ $t('sidebar.chunks') }}</span>
           <span class="font-medium">{{ stats.chunks }}</span>
         </div>
       </div>
@@ -59,11 +59,11 @@ export default {
   data() {
     return {
       navItems: [
-        { route: '/', icon: 'home', label: 'Dashboard' },
-        { route: '/documents', icon: 'file-word', label: 'Documents' },
-        { route: '/chunks', icon: 'layer-group', label: 'Chunks' },
-        { route: '/search', icon: 'search', label: 'Search' },
-        { route: '/agent', icon: 'robot', label: 'AI Agent' },
+        { route: '/', icon: 'home', labelKey: 'dashboard' },
+        { route: '/documents', icon: 'file-word', labelKey: 'documents' },
+        { route: '/chunks', icon: 'layer-group', labelKey: 'chunks' },
+        { route: '/search', icon: 'search', labelKey: 'search' },
+        { route: '/agent', icon: 'robot', labelKey: 'agent' },
       ],
       stats: {
         documents: 0,

@@ -1,0 +1,34 @@
+{
+  "app": {
+    "title": "Swedish Accounting Standards Board"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "documents": "Documents",
+    "chunks": "Chunks",
+    "search": "Search",
+    "agent": "AI Agent"
+  },
+  "status": {
+    "connected": "connected",
+    "dbOnly": "DB only",
+    "error": "error",
+    "offline": "offline",
+    "checking": "checking..."
+  },
+  "sidebar": {
+    "documents": "Documents:",
+    "chunks": "Chunks:"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search",
+    "noResults": "No results"
+  }
+}

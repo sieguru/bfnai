@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import i18n from './i18n'
 
 /* FontAwesome */
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -46,6 +47,7 @@ import {
   faClock,
   faDatabase,
   faServer,
+  faGlobe,
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -56,7 +58,7 @@ library.add(
   faTimes, faPlus, faHistory, faBars, faArrowLeft,
   faExternalLinkAlt, faQuoteLeft, faStar, faThumbsUp, faThumbsDown,
   faSync, faFilter, faList, faTree, faFile, faPlay, faCheck,
-  faExclamationTriangle, faClock, faDatabase, faServer
+  faExclamationTriangle, faClock, faDatabase, faServer, faGlobe
 )
 
 import './assets/main.css'
@@ -65,5 +67,6 @@ const app = createApp(App)
 
 app.component('font-awesome-icon', FontAwesomeIcon)
 app.use(router)
+app.use(i18n)
 
 app.mount('#app')
