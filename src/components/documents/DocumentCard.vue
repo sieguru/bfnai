@@ -15,7 +15,7 @@
 
       <!-- Status Badge -->
       <span :class="['px-2.5 py-0.5 rounded-full text-xs font-medium', statusClass]">
-        {{ document.status }}
+        {{ $t(`status.${document.status}`) }}
       </span>
     </div>
 
@@ -24,7 +24,7 @@
       <div class="flex items-center space-x-4">
         <span>
           <font-awesome-icon icon="layer-group" class="mr-1" />
-          {{ document.chunkCount || 0 }} chunks
+          {{ document.chunkCount || 0 }} {{ $t('common.chunks') }}
         </span>
         <span>
           <font-awesome-icon icon="clock" class="mr-1" />
@@ -42,14 +42,14 @@
           v-if="document.status === 'pending' || document.status === 'error'"
           @click="$emit('process', document)"
           class="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-          title="Process document"
+          :title="$t('documents.processDocument')"
         >
           <font-awesome-icon icon="play" />
         </button>
         <button
           @click="$emit('delete', document)"
           class="p-1.5 text-red-600 hover:bg-red-50 rounded"
-          title="Delete document"
+          :title="$t('documents.deleteDocument')"
         >
           <font-awesome-icon icon="trash" />
         </button>

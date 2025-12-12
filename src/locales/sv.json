@@ -14,7 +14,11 @@
     "dbOnly": "endast DB",
     "error": "fel",
     "offline": "offline",
-    "checking": "kontrollerar..."
+    "checking": "kontrollerar...",
+    "pending": "väntar",
+    "processing": "bearbetar",
+    "completed": "klar",
+    "unknown": "okänd"
   },
   "sidebar": {
     "documents": "Dokument:",
@@ -22,6 +26,7 @@
   },
   "common": {
     "loading": "Laddar...",
+    "searching": "Söker...",
     "error": "Ett fel uppstod",
     "save": "Spara",
     "cancel": "Avbryt",
@@ -29,6 +34,42 @@
     "edit": "Redigera",
     "close": "Stäng",
     "search": "Sök",
-    "noResults": "Inga resultat"
+    "noResults": "Inga resultat",
+    "chunks": "segment",
+    "tokens": "tokens"
+  },
+  "home": {
+    "title": "Översikt",
+    "totalDocuments": "Totalt dokument",
+    "totalChunks": "Totalt segment",
+    "vectorStore": "Vektorlager",
+    "systemStatus": "Systemstatus",
+    "avgTokensPerChunk": "Snitt: {count} tokens/segment",
+    "quickActions": "Snabbåtgärder",
+    "uploadDocument": "Ladda upp dokument",
+    "startNewChat": "Starta ny chatt",
+    "searchDocuments": "Sök i dokument",
+    "recentDocuments": "Senaste dokument",
+    "noDocumentsYet": "Inga dokument uppladdade ännu"
+  },
+  "documents": {
+    "title": "Dokument",
+    "uploadDocuments": "Ladda upp dokument",
+    "yourDocuments": "Dina dokument",
+    "selectToView": "Välj ett dokument för att visa detaljer",
+    "processDocument": "Bearbeta dokument",
+    "deleteDocument": "Radera dokument"
+  },
+  "chunks": {
+    "title": "Segmentutforskare",
+    "selectToView": "Välj ett segment för att visa detaljer"
+  },
+  "search": {
+    "title": "Vektorsökning",
+    "selectToView": "Välj ett resultat för att visa detaljer",
+    "similarTo": "Liknande segment #{id}"
+  },
+  "agent": {
+    "title": "AI-assistent"
   }
 }

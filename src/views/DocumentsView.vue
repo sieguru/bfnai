@@ -1,19 +1,19 @@
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Documents</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">{{ $t('documents.title') }}</h1>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Left: Upload & List -->
       <div class="lg:col-span-2 space-y-6">
         <!-- Upload Section -->
         <div class="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Upload Documents</h2>
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('documents.uploadDocuments') }}</h2>
           <DocumentUpload @uploaded="handleUploaded" />
         </div>
 
         <!-- Document List -->
         <div class="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Your Documents</h2>
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('documents.yourDocuments') }}</h2>
           <DocumentList
             ref="documentList"
             :selected-id="selectedDocument?.id"
@@ -34,7 +34,7 @@
           />
         </div>
         <div v-else class="bg-white border border-gray-200 rounded-lg p-6 text-center text-gray-500">
-          Select a document to view details
+          {{ $t('documents.selectToView') }}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 <template>
   <div class="h-[calc(100vh-8rem)]">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Vector Search</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">{{ $t('search.title') }}</h1>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
       <!-- Left: Search & Results -->
@@ -12,7 +12,7 @@
 
         <!-- Results -->
         <div class="bg-white border border-gray-200 rounded-lg p-6 overflow-y-auto" style="max-height: calc(100vh - 20rem);">
-          <LoadingSpinner v-if="loading" text="Searching..." />
+          <LoadingSpinner v-if="loading" :text="$t('common.searching')" />
           <SearchResults
             v-else
             :results="results"
@@ -33,7 +33,7 @@
           @find-similar="findSimilar"
         />
         <div v-else class="bg-white border border-gray-200 rounded-lg p-6 text-center text-gray-500 h-full flex items-center justify-center">
-          Select a result to view details
+          {{ $t('search.selectToView') }}
         </div>
       </div>
     </div>
@@ -104,7 +104,7 @@ export default {
     },
     async searchSimilar(chunkId) {
       this.loading = true
-      this.lastQuery = `Similar to chunk #${chunkId}`
+      this.lastQuery = this.$t('search.similarTo', { id: chunkId })
       this.hasSearched = true
 
       try {

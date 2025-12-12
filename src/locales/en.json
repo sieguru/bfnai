@@ -14,7 +14,11 @@
     "dbOnly": "DB only",
     "error": "error",
     "offline": "offline",
-    "checking": "checking..."
+    "checking": "checking...",
+    "pending": "pending",
+    "processing": "processing",
+    "completed": "completed",
+    "unknown": "unknown"
   },
   "sidebar": {
     "documents": "Documents:",
@@ -22,6 +26,7 @@
   },
   "common": {
     "loading": "Loading...",
+    "searching": "Searching...",
     "error": "An error occurred",
     "save": "Save",
     "cancel": "Cancel",
@@ -29,6 +34,42 @@
     "edit": "Edit",
     "close": "Close",
     "search": "Search",
-    "noResults": "No results"
+    "noResults": "No results",
+    "chunks": "chunks",
+    "tokens": "tokens"
+  },
+  "home": {
+    "title": "Dashboard",
+    "totalDocuments": "Total Documents",
+    "totalChunks": "Total Chunks",
+    "vectorStore": "Vector Store",
+    "systemStatus": "System Status",
+    "avgTokensPerChunk": "Avg: {count} tokens/chunk",
+    "quickActions": "Quick Actions",
+    "uploadDocument": "Upload Document",
+    "startNewChat": "Start New Chat",
+    "searchDocuments": "Search Documents",
+    "recentDocuments": "Recent Documents",
+    "noDocumentsYet": "No documents uploaded yet"
+  },
+  "documents": {
+    "title": "Documents",
+    "uploadDocuments": "Upload Documents",
+    "yourDocuments": "Your Documents",
+    "selectToView": "Select a document to view details",
+    "processDocument": "Process document",
+    "deleteDocument": "Delete document"
+  },
+  "chunks": {
+    "title": "Chunk Explorer",
+    "selectToView": "Select a chunk to view details"
+  },
+  "search": {
+    "title": "Vector Search",
+    "selectToView": "Select a result to view details",
+    "similarTo": "Similar to chunk #{id}"
+  },
+  "agent": {
+    "title": "AI Agent"
   }
 }

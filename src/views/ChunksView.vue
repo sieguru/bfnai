@@ -1,6 +1,6 @@
 <template>
   <div class="h-[calc(100vh-8rem)]">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Chunk Explorer</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">{{ $t('chunks.title') }}</h1>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
       <!-- Left: Explorer -->
@@ -17,7 +17,7 @@
           @find-similar="findSimilar"
         />
         <div v-else class="bg-white border border-gray-200 rounded-lg p-6 text-center text-gray-500 h-full flex items-center justify-center">
-          Select a chunk to view details
+          {{ $t('chunks.selectToView') }}
         </div>
       </div>
     </div>
