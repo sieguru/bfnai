@@ -21,6 +21,8 @@ export default {
   },
 
   qdrant: {
+    url: process.env.QDRANT_URL || null,  // Cloud URL (e.g., https://xxx.aws.cloud.qdrant.io)
+    apiKey: process.env.QDRANT_API_KEY || null,
     host: process.env.QDRANT_HOST || 'localhost',
     port: parseInt(process.env.QDRANT_PORT || '6333'),
     collection: process.env.QDRANT_COLLECTION || 'legal_chunks',

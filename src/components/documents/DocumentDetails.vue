@@ -233,10 +233,15 @@ export default {
         // Initialize style config - convert to string values to match select options
         this.styleConfig = {}
         this.styles.forEach(style => {
-          // Convert integer heading_level to string, null to empty string
-          this.styleConfig[style.style_name] = style.heading_level != null
-            ? String(style.heading_level)
-            : ''
+          // Convert integer heading_level to string
+          // -1 means "ignore", null means "body text"
+          if (style.heading_level === -1) {
+            this.styleConfig[style.style_name] = 'ignore'
+          } else if (style.heading_level != null && style.heading_level > 0) {
+            this.styleConfig[style.style_name] = String(style.heading_level)
+          } else {
+            this.styleConfig[style.style_name] = ''  // Body text
+          }
         })
       } catch (error) {
         console.error('Failed to load styles:', error)
@@ -251,9 +256,13 @@ export default {
         // Initialize style config - convert to string values to match select options
         this.styleConfig = {}
         this.styles.forEach(style => {
-          this.styleConfig[style.style_name] = style.heading_level != null
-            ? String(style.heading_level)
-            : ''
+          if (style.heading_level === -1) {
+            this.styleConfig[style.style_name] = 'ignore'
+          } else if (style.heading_level != null && style.heading_level > 0) {
+            this.styleConfig[style.style_name] = String(style.heading_level)
+          } else {
+            this.styleConfig[style.style_name] = ''
+          }
         })
       } catch (error) {
         console.error('Failed to analyze styles:', error)
@@ -302,9 +311,10 @@ export default {
       this.styleConfig[styleName] = rawValue
 
       // Convert to proper type for database: empty string -> null, number strings -> integers
+      // 'ignore' -> -1 (special value meaning skip this style during chunking)
       let headingLevel = null
       if (rawValue === 'ignore') {
-        headingLevel = null  // 'ignore' is stored as null but not configured
+        headingLevel = -1  // Special value: ignore this style during chunking
       } else if (rawValue && rawValue !== '') {
         headingLevel = parseInt(rawValue, 10)
       }

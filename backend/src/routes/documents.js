@@ -247,11 +247,21 @@ router.post('/:id/process', async (req, res) => {
     if (Object.keys(styleMapping).length === 0) {
       const dbStyles = await Document.getDocumentStyles(doc.id);
       for (const style of dbStyles) {
-        if (style.is_configured && style.heading_level !== null) {
-          finalStyleMapping[style.style_name] = {
-            headingLevel: style.heading_level,
-            isBodyText: false,
-          };
+        if (style.is_configured) {
+          if (style.heading_level === -1) {
+            // Style marked as "ignore" - skip paragraphs with this style
+            finalStyleMapping[style.style_name] = {
+              headingLevel: null,
+              isBodyText: false,
+              isIgnored: true,
+            };
+          } else if (style.heading_level !== null && style.heading_level > 0) {
+            // Heading style
+            finalStyleMapping[style.style_name] = {
+              headingLevel: style.heading_level,
+              isBodyText: false,
+            };
+          }
         }
       }
     }

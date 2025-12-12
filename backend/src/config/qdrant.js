@@ -5,11 +5,20 @@ let client = null;
 
 export function getQdrantClient() {
   if (!client) {
-    client = new QdrantClient({
-      host: config.qdrant.host,
-      port: config.qdrant.port,
-      checkCompatibility: false,
-    });
+    // Use cloud URL if provided, otherwise fall back to host/port
+    if (config.qdrant.url) {
+      client = new QdrantClient({
+        url: config.qdrant.url,
+        apiKey: config.qdrant.apiKey,
+        checkCompatibility: false,
+      });
+    } else {
+      client = new QdrantClient({
+        host: config.qdrant.host,
+        port: config.qdrant.port,
+        checkCompatibility: false,
+      });
+    }
   }
   return client;
 }

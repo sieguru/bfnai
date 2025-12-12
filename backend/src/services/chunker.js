@@ -44,6 +44,12 @@ export async function buildHierarchy(paragraphs, styleMapping = {}) {
     const mapping = styleMapping[para.style] || await getStyleMapping(para.style);
     const headingLevel = mapping.headingLevel;
     const isBodyText = mapping.isBodyText;
+    const isIgnored = mapping.isIgnored;
+
+    // Skip paragraphs with ignored styles (e.g., TOC entries)
+    if (isIgnored) {
+      continue;
+    }
 
     if (headingLevel) {
       // This is a heading - create a new section
