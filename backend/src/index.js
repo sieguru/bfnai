@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import config from './config/env.js';
 import { testConnection } from './config/database.js';
-import { testQdrantConnection } from './config/qdrant.js';
+import { testQdrantConnection, ensurePayloadIndexes } from './config/qdrant.js';
 import { getCollectionStats } from './services/vectorStore.js';
 import { getEmbeddingInfo } from './services/embeddings.js';
 
@@ -77,8 +77,14 @@ app.use((req, res) => {
 // Start server
 const PORT = config.port;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${config.nodeEnv}`);
   console.log(`Embedding provider: ${config.embedding.provider}`);
+
+  // Ensure Qdrant payload indexes exist (for filtering)
+  const qdrantConnected = await testQdrantConnection();
+  if (qdrantConnected) {
+    await ensurePayloadIndexes(config.qdrant.collection);
+  }
 });

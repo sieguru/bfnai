@@ -115,6 +115,9 @@ export async function deleteByDocumentId(documentId) {
   const collection = config.qdrant.collection;
 
   try {
+    // Check if collection exists first
+    await qdrant.getCollection(collection);
+
     await qdrant.delete(collection, {
       wait: true,
       filter: {
@@ -129,7 +132,10 @@ export async function deleteByDocumentId(documentId) {
       },
     });
   } catch (error) {
-    // Collection might not exist yet
+    // Collection doesn't exist yet - this is fine, nothing to delete
+    if (error.message?.includes('Not found') || error.message?.includes('not found')) {
+      return;
+    }
     console.warn('Failed to delete vectors:', error.message);
   }
 }
@@ -192,7 +198,7 @@ export async function getCollectionStats() {
 /**
  * Get a specific vector by ID
  */
-export async function getVector(vectorId) {
+export async function getVector(vectorId, includeVector = false) {
   if (!await isQdrantAvailable()) {
     return null;
   }
@@ -203,8 +209,82 @@ export async function getVector(vectorId) {
   const result = await qdrant.retrieve(collection, {
     ids: [vectorId],
     with_payload: true,
-    with_vector: false,
+    with_vector: includeVector,
   });
 
   return result[0] || null;
+}
+
+/**
+ * Get multiple vectors by IDs
+ */
+export async function getVectors(vectorIds, includeVector = false) {
+  if (!await isQdrantAvailable()) {
+    return [];
+  }
+
+  const qdrant = getQdrantClient();
+  const collection = config.qdrant.collection;
+
+  const result = await qdrant.retrieve(collection, {
+    ids: vectorIds,
+    with_payload: true,
+    with_vector: includeVector,
+  });
+
+  return result;
+}
+
+/**
+ * Scroll through all vectors in collection
+ */
+export async function scrollVectors(limit = 10, offset = null, includeVector = false) {
+  if (!await isQdrantAvailable()) {
+    return { points: [], nextOffset: null };
+  }
+
+  const qdrant = getQdrantClient();
+  const collection = config.qdrant.collection;
+
+  const result = await qdrant.scroll(collection, {
+    limit,
+    offset,
+    with_payload: true,
+    with_vector: includeVector,
+  });
+
+  return {
+    points: result.points,
+    nextOffset: result.next_page_offset,
+  };
+}
+
+/**
+ * Get detailed collection info including config
+ */
+export async function getCollectionInfo() {
+  if (!await isQdrantAvailable()) {
+    return null;
+  }
+
+  const qdrant = getQdrantClient();
+  const collection = config.qdrant.collection;
+
+  try {
+    const info = await qdrant.getCollection(collection);
+    return {
+      name: collection,
+      status: info.status,
+      vectorsCount: info.vectors_count,
+      pointsCount: info.points_count,
+      segmentsCount: info.segments_count,
+      config: info.config,
+      payloadSchema: info.payload_schema,
+    };
+  } catch (error) {
+    if (error.message?.includes('not found')) {
+      return null;
+    }
+    throw error;
+  }
 }

@@ -305,9 +305,15 @@ router.post('/:id/process', async (req, res) => {
         const texts = chunks.map(c => c.content);
         const embeddings = await generateEmbeddingsBatched(texts);
 
+        // Debug: check embedding dimensions
+        if (embeddings.length > 0) {
+          console.log(`Generated ${embeddings.length} embeddings, dimension: ${embeddings[0].length}, expected: ${embeddingInfo.dimension}`);
+        }
+
         // Store in vector database
         const vectorPoints = chunks.map((chunk, idx) => ({
-          id: `${doc.id}-${chunkIds[idx]}`,
+          // Use chunk ID directly as integer for Qdrant point ID
+          id: chunkIds[idx],
           vector: embeddings[idx],
           payload: {
             chunk_id: chunkIds[idx],
@@ -319,7 +325,13 @@ router.post('/:id/process', async (req, res) => {
           },
         }));
 
-        const vectorIds = await upsertVectors(vectorPoints);
+        let vectorIds;
+        try {
+          vectorIds = await upsertVectors(vectorPoints);
+        } catch (qdrantError) {
+          console.error('Failed to upsert vectors to Qdrant:', qdrantError.message);
+          throw qdrantError;
+        }
 
         // Update chunks with vector IDs
         for (let i = 0; i < chunkIds.length; i++) {
@@ -357,6 +369,194 @@ router.post('/:id/process', async (req, res) => {
     );
 
     res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
+ * POST /api/documents/:id/process-stream
+ * Process document with SSE progress updates
+ */
+router.post('/:id/process-stream', async (req, res) => {
+  // Set up SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendProgress = (stage, progress, message) => {
+    res.write(`data: ${JSON.stringify({ stage, progress, message })}\n\n`);
+  };
+
+  try {
+    const doc = await Document.getDocumentById(req.params.id);
+
+    if (!doc) {
+      sendProgress('error', 0, 'Document not found');
+      res.end();
+      return;
+    }
+
+    const { chunkSize = 500, chunkOverlap = 1 } = req.body;
+
+    sendProgress('parsing', 5, 'Parsing document...');
+    await Document.updateDocumentStatus(doc.id, Document.DocumentStatus.PROCESSING);
+
+    const filePath = join(__dirname, '..', '..', 'uploads', doc.filename);
+    const parsedDoc = await parseDocumentStructured(filePath);
+
+    sendProgress('parsing', 10, 'Building style mappings...');
+
+    // Build style mapping from database
+    let finalStyleMapping = {};
+    const dbStyles = await Document.getDocumentStyles(doc.id);
+    for (const style of dbStyles) {
+      if (style.is_configured) {
+        if (style.heading_level === -1) {
+          finalStyleMapping[style.style_name] = {
+            headingLevel: null,
+            isBodyText: false,
+            isIgnored: true,
+          };
+        } else if (style.heading_level !== null && style.heading_level > 0) {
+          finalStyleMapping[style.style_name] = {
+            headingLevel: style.heading_level,
+            isBodyText: false,
+          };
+        }
+      }
+    }
+
+    sendProgress('chunking', 15, 'Chunking document...');
+
+    const chunks = await chunkDocument(parsedDoc, finalStyleMapping, {
+      maxChunkTokens: chunkSize,
+      overlapParagraphs: chunkOverlap,
+    });
+
+    sendProgress('chunking', 20, `Created ${chunks.length} chunks`);
+
+    // Delete existing chunks
+    await Chunk.deleteChunksByDocumentId(doc.id);
+    await deleteByDocumentId(doc.id);
+
+    sendProgress('saving', 25, 'Saving chunks to database...');
+
+    // Save chunks to database
+    const chunkIds = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const chunkId = await Chunk.createChunk({
+        documentId: doc.id,
+        chunkIndex: chunk.chunkIndex,
+        chunkHash: chunk.chunkHash,
+        content: chunk.content,
+        contentLength: chunk.contentLength,
+        tokenEstimate: chunk.tokenEstimate,
+        hierarchyPath: chunk.hierarchyPath,
+        hierarchyJson: chunk.hierarchyJson,
+        hierarchyLevel: chunk.hierarchyLevel,
+        paragraphStart: chunk.paragraphStart,
+        paragraphEnd: chunk.paragraphEnd,
+      });
+      chunkIds.push(chunkId);
+
+      // Update progress every 10 chunks
+      if (i % 10 === 0) {
+        const saveProgress = 25 + Math.floor((i / chunks.length) * 5);
+        sendProgress('saving', saveProgress, `Saved ${i + 1}/${chunks.length} chunks`);
+      }
+    }
+
+    sendProgress('saving', 30, 'Chunks saved to database');
+
+    // Generate embeddings and store vectors
+    let vectorsCreated = false;
+    const qdrantAvailable = await isQdrantAvailable();
+
+    if (qdrantAvailable) {
+      try {
+        const embeddingInfo = getEmbeddingInfo();
+        const texts = chunks.map(c => c.content);
+
+        sendProgress('embedding', 30, 'Generating embeddings...');
+
+        // Progress callback for embeddings
+        const onEmbeddingProgress = (batchNum, totalBatches) => {
+          // Embeddings are 30-85% of total progress
+          const embeddingProgress = 30 + Math.floor((batchNum / totalBatches) * 55);
+          sendProgress('embedding', embeddingProgress, `Embedding batch ${batchNum}/${totalBatches}`);
+        };
+
+        const embeddings = await generateEmbeddingsBatched(texts, 10, onEmbeddingProgress);
+
+        if (embeddings.length > 0) {
+          console.log(`Generated ${embeddings.length} embeddings, dimension: ${embeddings[0].length}, expected: ${embeddingInfo.dimension}`);
+        }
+
+        sendProgress('storing', 85, 'Storing vectors in Qdrant...');
+
+        // Store in vector database
+        const vectorPoints = chunks.map((chunk, idx) => ({
+          id: chunkIds[idx],
+          vector: embeddings[idx],
+          payload: {
+            chunk_id: chunkIds[idx],
+            document_id: doc.id,
+            document_name: doc.original_name,
+            hierarchy_path: chunk.hierarchyPath,
+            text_preview: chunk.content.substring(0, 200),
+            token_count: chunk.tokenEstimate,
+          },
+        }));
+
+        const vectorIds = await upsertVectors(vectorPoints);
+
+        sendProgress('storing', 95, 'Updating chunk records...');
+
+        // Update chunks with vector IDs
+        for (let i = 0; i < chunkIds.length; i++) {
+          await Chunk.updateChunkVector(chunkIds[i], vectorIds[i], embeddingInfo.model);
+        }
+        vectorsCreated = true;
+      } catch (embeddingError) {
+        console.warn('Failed to create embeddings:', embeddingError.message);
+        sendProgress('warning', 90, `Embeddings failed: ${embeddingError.message}`);
+      }
+    } else {
+      sendProgress('warning', 90, 'Qdrant not available, skipping embeddings');
+    }
+
+    await Document.updateDocumentStatus(doc.id, Document.DocumentStatus.COMPLETED);
+
+    const stats = getChunkingStats(chunks);
+
+    sendProgress('complete', 100, 'Processing complete!');
+
+    // Send final result
+    res.write(`data: ${JSON.stringify({
+      stage: 'done',
+      progress: 100,
+      result: {
+        success: true,
+        documentId: doc.id,
+        chunksCreated: chunks.length,
+        vectorsCreated,
+        stats,
+      }
+    })}\n\n`);
+
+    res.end();
+  } catch (error) {
+    console.error('Process document error:', error);
+
+    await Document.updateDocumentStatus(
+      req.params.id,
+      Document.DocumentStatus.ERROR,
+      error.message
+    );
+
+    sendProgress('error', 0, error.message);
+    res.end();
   }
 });
 

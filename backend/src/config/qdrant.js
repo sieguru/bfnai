@@ -49,11 +49,58 @@ export async function ensureCollection(name, vectorSize) {
         },
       });
       console.log(`Created Qdrant collection: ${name}`);
+
+      // Create payload indexes for filtering
+      await qdrant.createPayloadIndex(name, {
+        field_name: 'document_id',
+        field_schema: 'integer',
+      });
+      console.log(`Created index on document_id`);
+
+      await qdrant.createPayloadIndex(name, {
+        field_name: 'chunk_id',
+        field_schema: 'integer',
+      });
+      console.log(`Created index on chunk_id`);
     }
 
     return true;
   } catch (error) {
     console.error('Failed to ensure collection:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Ensure payload indexes exist on an existing collection
+ */
+export async function ensurePayloadIndexes(name) {
+  const qdrant = getQdrantClient();
+
+  try {
+    // Get collection info to check existing indexes
+    const info = await qdrant.getCollection(name);
+    const existingIndexes = Object.keys(info.payload_schema || {});
+
+    if (!existingIndexes.includes('document_id')) {
+      await qdrant.createPayloadIndex(name, {
+        field_name: 'document_id',
+        field_schema: 'integer',
+      });
+      console.log(`Created index on document_id`);
+    }
+
+    if (!existingIndexes.includes('chunk_id')) {
+      await qdrant.createPayloadIndex(name, {
+        field_name: 'chunk_id',
+        field_schema: 'integer',
+      });
+      console.log(`Created index on chunk_id`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to ensure payload indexes:', error.message);
     return false;
   }
 }

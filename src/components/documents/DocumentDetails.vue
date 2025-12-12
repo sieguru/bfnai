@@ -164,7 +164,7 @@
 </template>
 
 <script>
-import { analyzeDocumentStyles, getDocumentStyles, updateDocumentStyles, processDocument } from '@/services/api'
+import { analyzeDocumentStyles, getDocumentStyles, updateDocumentStyles, processDocumentStream } from '@/services/api'
 import ProgressBar from '../common/ProgressBar.vue'
 
 export default {
@@ -345,14 +345,19 @@ export default {
       this.processStatus = 'Starting...'
 
       try {
-        this.processStatus = 'Processing document...'
-        this.processProgress = 30
-
-        // Style mappings are loaded from database on the backend
-        const response = await processDocument(this.document.id, {
-          chunkSize: this.chunkSize,
-          chunkOverlap: this.chunkOverlap,
-        })
+        // Use streaming endpoint with progress updates
+        const response = await processDocumentStream(
+          this.document.id,
+          {
+            chunkSize: this.chunkSize,
+            chunkOverlap: this.chunkOverlap,
+          },
+          // Progress callback
+          ({ stage, progress, message }) => {
+            this.processProgress = progress
+            this.processStatus = message
+          }
+        )
 
         this.processProgress = 100
         this.processStatus = 'Complete!'

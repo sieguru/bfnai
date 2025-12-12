@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { generateEmbedding } from '../services/embeddings.js';
-import { search, searchByDocuments } from '../services/vectorStore.js';
+import { generateEmbedding, getEmbeddingInfo } from '../services/embeddings.js';
+import { search, searchByDocuments, getCollectionInfo, isQdrantAvailable } from '../services/vectorStore.js';
 import * as Chunk from '../models/Chunk.js';
 
 const router = Router();
@@ -210,6 +210,45 @@ router.post('/hybrid', async (req, res) => {
     });
   } catch (error) {
     console.error('Hybrid search error:', error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
+ * GET /api/search/collection
+ * Get Qdrant collection info and stats
+ */
+router.get('/collection', async (req, res) => {
+  try {
+    const available = await isQdrantAvailable();
+
+    if (!available) {
+      return res.json({
+        available: false,
+        message: 'Qdrant is not connected',
+      });
+    }
+
+    const info = await getCollectionInfo();
+    const embeddingInfo = getEmbeddingInfo();
+
+    if (!info) {
+      return res.json({
+        available: true,
+        exists: false,
+        message: 'Collection does not exist yet',
+        embedding: embeddingInfo,
+      });
+    }
+
+    res.json({
+      available: true,
+      exists: true,
+      collection: info,
+      embedding: embeddingInfo,
+    });
+  } catch (error) {
+    console.error('Get collection info error:', error);
     res.status(500).json({ error: true, message: error.message });
   }
 });

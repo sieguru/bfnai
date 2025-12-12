@@ -15,15 +15,18 @@ npm run build            # Build for production
 ```bash
 cd backend
 npm install              # Install backend dependencies
-npm run dev              # Start backend with auto-reload (port 3000)
+npm run dev              # Start backend with auto-reload (port 3009)
 npm start                # Start backend
 ```
 
 ### Infrastructure
 ```bash
-docker-compose up -d     # Start MySQL + Qdrant
+docker-compose up -d     # Start MySQL + Qdrant (local)
 docker-compose down      # Stop services
 ```
+
+### IntelliJ Run Configurations
+Use the "Full Stack" run configuration to start both frontend and backend together. Individual "Frontend" and "Backend" configurations also available in `.run/`.
 
 ### Setup
 ```bash
@@ -79,7 +82,14 @@ Legal Document RAG application for uploading Word documents, chunking them based
 
 ### Database
 - **MySQL**: Documents, chunks, styles, conversations, query history
-- **Qdrant**: Vector storage for semantic search
+- **Qdrant**: Vector storage for semantic search (local Docker or Qdrant Cloud)
+
+### Qdrant Configuration
+Supports both local (Docker) and cloud deployment:
+- **Local**: Set `QDRANT_HOST` and `QDRANT_PORT` in `.env`
+- **Cloud**: Set `QDRANT_URL` and `QDRANT_API_KEY` in `.env` (takes precedence over local)
+
+The collection is auto-created on first document processing.
 
 ## Tech Stack
 
@@ -105,6 +115,14 @@ Chunks respect document hierarchy (Heading 1 > Heading 2 > etc.). Each chunk sto
 - `hierarchy_path`: "Chapter 1 > Section 1.2 > Article 5"
 - `hierarchy_json`: Array for tree building
 - Token count, paragraph range, content hash
+
+### Style Mapping
+Styles are configured per-document in the frontend and saved to MySQL:
+- **Body Text**: `heading_level = null` - included in chunks as content
+- **Heading 1-6**: `heading_level = 1-6` - creates hierarchy structure
+- **Ignore**: `heading_level = -1` - skipped during chunking (use for TOC, page numbers, etc.)
+
+The backend loads style mappings from the database during processing (not from frontend request).
 
 ### AI Agent Grounding
 Agent uses strict system prompt to only answer from provided document chunks. Citations formatted as `[Document: X, Section: Y]`.

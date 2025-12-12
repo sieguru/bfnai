@@ -40,6 +40,69 @@ export const updateDocumentStyles = (id, styles) => api.put(`/documents/${id}/st
 
 export const processDocument = (id, options = {}) => api.post(`/documents/${id}/process`, options)
 
+/**
+ * Process document with SSE progress updates
+ * @param {number} id - Document ID
+ * @param {object} options - Processing options (chunkSize, chunkOverlap)
+ * @param {function} onProgress - Callback for progress updates ({ stage, progress, message })
+ * @returns {Promise} - Resolves with final result when complete
+ */
+export const processDocumentStream = async (id, options = {}, onProgress) => {
+  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3009/api'
+  const url = `${baseURL}/documents/${id}/process-stream`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(options),
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let result = null
+
+  while (true) {
+    const { done, value } = await reader.read()
+
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+
+    // Process complete SSE messages
+    const lines = buffer.split('\n')
+    buffer = lines.pop() // Keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6))
+
+          if (data.stage === 'done') {
+            result = data.result
+          } else if (data.stage === 'error') {
+            throw new Error(data.message)
+          } else if (onProgress) {
+            onProgress(data)
+          }
+        } catch (e) {
+          if (e.message !== 'Unexpected end of JSON input') {
+            console.error('Failed to parse SSE data:', e)
+          }
+        }
+      }
+    }
+  }
+
+  return { data: result }
+}
+
 export const deleteDocument = (id) => api.delete(`/documents/${id}`)
 
 // Chunks API
@@ -59,6 +122,12 @@ export const getChunksBatch = (ids) => api.post('/chunks/batch', { ids })
 
 export const getHierarchySummary = (documentId) => api.get(`/chunks/hierarchy-summary/${documentId}`)
 
+export const getChunkVector = (id, includeValues = true) => {
+  return api.get(`/chunks/${id}/vector`, { params: { values: includeValues } })
+}
+
+export const browseVectors = (params = {}) => api.get('/chunks/vectors/browse', { params })
+
 // Search API
 export const vectorSearch = (query, options = {}) => {
   return api.post('/search', { query, ...options })
@@ -71,6 +140,8 @@ export const findSimilarChunks = (chunkId, options = {}) => {
 export const hybridSearch = (query, options = {}) => {
   return api.post('/search/hybrid', { query, ...options })
 }
+
+export const getCollectionInfo = () => api.get('/search/collection')
 
 // Agent API
 export const chatWithAgent = (query, options = {}) => {

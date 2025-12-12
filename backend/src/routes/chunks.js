@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as Chunk from '../models/Chunk.js';
+import { getVector, scrollVectors, isQdrantAvailable } from '../services/vectorStore.js';
 
 const router = Router();
 
@@ -126,6 +127,100 @@ router.post('/batch', async (req, res) => {
     res.json({ chunks });
   } catch (error) {
     console.error('Get batch chunks error:', error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
+ * GET /api/chunks/:id/vector
+ * Get the vector embedding for a chunk
+ */
+router.get('/:id/vector', async (req, res) => {
+  try {
+    const chunkId = parseInt(req.params.id);
+    const includeValues = req.query.values !== 'false'; // Include vector values by default
+
+    // First get the chunk to find its vector_id
+    const chunk = await Chunk.getChunkById(chunkId);
+
+    if (!chunk) {
+      return res.status(404).json({ error: true, message: 'Chunk not found' });
+    }
+
+    if (!chunk.vector_id) {
+      return res.status(404).json({
+        error: true,
+        message: 'No vector stored for this chunk',
+        chunk: {
+          id: chunk.id,
+          embedding_model: chunk.embedding_model,
+        }
+      });
+    }
+
+    // Get vector from Qdrant
+    const vector = await getVector(chunk.vector_id, includeValues);
+
+    if (!vector) {
+      return res.status(404).json({
+        error: true,
+        message: 'Vector not found in Qdrant',
+        vectorId: chunk.vector_id,
+      });
+    }
+
+    res.json({
+      chunkId: chunk.id,
+      vectorId: vector.id,
+      embeddingModel: chunk.embedding_model,
+      dimension: includeValues && vector.vector ? vector.vector.length : null,
+      vector: includeValues ? vector.vector : null,
+      payload: vector.payload,
+      // Include some stats about the vector
+      stats: includeValues && vector.vector ? {
+        min: Math.min(...vector.vector),
+        max: Math.max(...vector.vector),
+        mean: vector.vector.reduce((a, b) => a + b, 0) / vector.vector.length,
+        norm: Math.sqrt(vector.vector.reduce((a, b) => a + b * b, 0)),
+      } : null,
+    });
+  } catch (error) {
+    console.error('Get chunk vector error:', error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
+ * GET /api/chunks/vectors/browse
+ * Browse all vectors with pagination
+ */
+router.get('/vectors/browse', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = req.query.offset || null;
+    const includeValues = req.query.values === 'true'; // Don't include values by default (large)
+
+    if (!await isQdrantAvailable()) {
+      return res.status(503).json({ error: true, message: 'Qdrant not available' });
+    }
+
+    const result = await scrollVectors(limit, offset, includeValues);
+
+    res.json({
+      points: result.points.map(point => ({
+        id: point.id,
+        payload: point.payload,
+        dimension: includeValues && point.vector ? point.vector.length : null,
+        vector: includeValues ? point.vector : null,
+        vectorPreview: includeValues && point.vector
+          ? `[${point.vector.slice(0, 5).map(v => v.toFixed(4)).join(', ')}...]`
+          : null,
+      })),
+      nextOffset: result.nextOffset,
+      hasMore: result.nextOffset !== null,
+    });
+  } catch (error) {
+    console.error('Browse vectors error:', error);
     res.status(500).json({ error: true, message: error.message });
   }
 });
