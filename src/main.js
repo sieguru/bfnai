@@ -49,6 +49,7 @@ import {
   faServer,
   faGlobe,
   faHashtag,
+  faInfoCircle,
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -59,7 +60,8 @@ library.add(
   faTimes, faPlus, faHistory, faBars, faArrowLeft,
   faExternalLinkAlt, faQuoteLeft, faStar, faThumbsUp, faThumbsDown,
   faSync, faFilter, faList, faTree, faFile, faPlay, faCheck,
-  faExclamationTriangle, faClock, faDatabase, faServer, faGlobe, faHashtag
+  faExclamationTriangle, faClock, faDatabase, faServer, faGlobe, faHashtag,
+  faInfoCircle
 )
 
 import './assets/main.css'

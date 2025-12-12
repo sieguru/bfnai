@@ -126,6 +126,7 @@
     "allDocuments": "Alla dokument",
     "findSimilar": "Hitta liknande",
     "vectorEmbedding": "Vektorinbäddning",
+    "vectorEmbeddingInfo": "En vektorinbäddning är en numerisk representation av textinnehållet. Den fångar textens semantiska betydelse som en lista med tal (vanligtvis 1024 dimensioner), vilket möjliggör likhetssökning och AI-driven informationshämtning.",
     "vectorPreview": "Förhandsvisning:",
     "showFullVector": "Visa full vektor",
     "hideFullVector": "Dölj full vektor",

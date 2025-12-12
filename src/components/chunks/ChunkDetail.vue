@@ -47,16 +47,35 @@
 
         <!-- Vector Section (collapsible) -->
         <div v-if="hasVectorId" class="mt-4 border-t pt-4">
-        <button
-          @click="toggleVector"
-          class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-        >
-          <font-awesome-icon :icon="showVector ? 'chevron-down' : 'chevron-right'" class="w-3" />
-          {{ $t('chunks.vectorEmbedding') }}
-          <span v-if="vectorData" class="text-xs text-gray-500 font-normal">
-            ({{ vectorData.dimension }} dimensions)
-          </span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            @click="toggleVector"
+            class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          >
+            <font-awesome-icon :icon="showVector ? 'chevron-down' : 'chevron-right'" class="w-3" />
+            {{ $t('chunks.vectorEmbedding') }}
+            <span v-if="vectorData" class="text-xs text-gray-500 font-normal">
+              ({{ vectorData.dimension }} dimensions)
+            </span>
+          </button>
+          <div class="relative inline-block">
+            <button
+              @click.stop="showVectorInfo = !showVectorInfo"
+              class="text-gray-400 hover:text-blue-600"
+            >
+              <font-awesome-icon icon="info-circle" />
+            </button>
+            <div
+              v-if="showVectorInfo"
+              class="absolute left-0 bottom-full mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10"
+            >
+              <div class="relative">
+                {{ $t('chunks.vectorEmbeddingInfo') }}
+                <div class="absolute left-4 top-full w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div v-if="showVector" class="mt-3">
           <div v-if="loadingVector" class="text-sm text-gray-500">
@@ -188,6 +207,7 @@ export default {
       loadingChunk: false,
       showVector: false,
       showFullVector: false,
+      showVectorInfo: false,
       loadingVector: false,
       vectorData: null,
       vectorError: null,

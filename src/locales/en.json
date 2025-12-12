@@ -126,6 +126,7 @@
     "allDocuments": "All Documents",
     "findSimilar": "Find Similar",
     "vectorEmbedding": "Vector Embedding",
+    "vectorEmbeddingInfo": "A vector embedding is a numerical representation of the text content. It captures the semantic meaning of the text as a list of numbers (typically 1024 dimensions), enabling similarity search and AI-powered retrieval.",
     "vectorPreview": "Preview:",
     "showFullVector": "Show Full Vector",
     "hideFullVector": "Hide Full Vector",
