@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { generateEmbedding, getEmbeddingInfo } from '../services/embeddings.js';
-import { search, searchByDocuments, getCollectionInfo, isQdrantAvailable } from '../services/vectorStore.js';
+import { search, searchByDocuments, getCollectionInfo, isQdrantAvailable, clearCollection } from '../services/vectorStore.js';
 import * as Chunk from '../models/Chunk.js';
 
 const router = Router();
@@ -249,6 +249,39 @@ router.get('/collection', async (req, res) => {
     });
   } catch (error) {
     console.error('Get collection info error:', error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/search/collection
+ * Clear all vectors from Qdrant collection
+ */
+router.delete('/collection', async (req, res) => {
+  try {
+    const available = await isQdrantAvailable();
+
+    if (!available) {
+      return res.status(503).json({
+        error: true,
+        message: 'Qdrant is not connected',
+      });
+    }
+
+    const result = await clearCollection();
+
+    // Also clear vector_id from all chunks in MySQL
+    const { update } = await import('../config/database.js');
+    const cleared = await update('UPDATE chunks SET vector_id = NULL, embedded_at = NULL, embedding_model = NULL');
+
+    res.json({
+      success: true,
+      qdrant: result,
+      chunksCleared: cleared,
+      message: 'Collection deleted and chunk vector references cleared. Re-process documents to recreate vectors.',
+    });
+  } catch (error) {
+    console.error('Clear collection error:', error);
     res.status(500).json({ error: true, message: error.message });
   }
 });

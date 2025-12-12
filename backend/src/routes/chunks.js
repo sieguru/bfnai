@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as Chunk from '../models/Chunk.js';
 import { getVector, scrollVectors, isQdrantAvailable } from '../services/vectorStore.js';
+import { getEmbeddingInfo } from '../services/embeddings.js';
 
 const router = Router();
 
@@ -74,6 +75,100 @@ router.get('/search', async (req, res) => {
     res.json({ chunks });
   } catch (error) {
     console.error('Search chunks error:', error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
+ * GET /api/chunks/sync-vectors (test endpoint)
+ */
+router.get('/sync-vectors', (req, res) => {
+  res.json({ message: 'Use POST method to sync vectors' });
+});
+
+/**
+ * POST /api/chunks/sync-vectors
+ * Sync vector_ids from Qdrant to MySQL chunks
+ * This backfills vector_id for chunks that have vectors in Qdrant but NULL in MySQL
+ */
+router.post('/sync-vectors', async (req, res) => {
+  console.log('=== SYNC-VECTORS ENDPOINT HIT ===');
+  try {
+    if (!await isQdrantAvailable()) {
+      return res.status(503).json({ error: true, message: 'Qdrant not available' });
+    }
+
+    const embeddingInfo = getEmbeddingInfo();
+    let synced = 0;
+    let skipped = 0;
+    let offset = null;
+
+    // Scroll through all vectors in Qdrant
+    while (true) {
+      const result = await scrollVectors(100, offset, false);
+
+      for (const point of result.points) {
+        const chunkId = point.payload?.chunk_id;
+        if (chunkId) {
+          // Check if chunk exists first
+          const chunk = await Chunk.getChunkById(chunkId);
+          if (chunk) {
+            // Update the chunk with vector_id
+            await Chunk.updateChunkVector(chunkId, point.id, embeddingInfo.model);
+            synced++;
+          } else {
+            skipped++;
+          }
+        }
+      }
+
+      if (!result.nextOffset) break;
+      offset = result.nextOffset;
+    }
+
+    res.json({
+      success: true,
+      synced,
+      skipped,
+      message: `Synced ${synced} vector IDs, skipped ${skipped} orphaned vectors`,
+    });
+  } catch (error) {
+    console.error('Sync vectors error:', error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
+ * GET /api/chunks/vectors/browse
+ * Browse all vectors with pagination
+ */
+router.get('/vectors/browse', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = req.query.offset || null;
+    const includeValues = req.query.values === 'true'; // Don't include values by default (large)
+
+    if (!await isQdrantAvailable()) {
+      return res.status(503).json({ error: true, message: 'Qdrant not available' });
+    }
+
+    const result = await scrollVectors(limit, offset, includeValues);
+
+    res.json({
+      points: result.points.map(point => ({
+        id: point.id,
+        payload: point.payload,
+        dimension: includeValues && point.vector ? point.vector.length : null,
+        vector: includeValues ? point.vector : null,
+        vectorPreview: includeValues && point.vector
+          ? `[${point.vector.slice(0, 5).map(v => v.toFixed(4)).join(', ')}...]`
+          : null,
+      })),
+      nextOffset: result.nextOffset,
+      hasMore: result.nextOffset !== null,
+    });
+  } catch (error) {
+    console.error('Browse vectors error:', error);
     res.status(500).json({ error: true, message: error.message });
   }
 });
@@ -186,41 +281,6 @@ router.get('/:id/vector', async (req, res) => {
     });
   } catch (error) {
     console.error('Get chunk vector error:', error);
-    res.status(500).json({ error: true, message: error.message });
-  }
-});
-
-/**
- * GET /api/chunks/vectors/browse
- * Browse all vectors with pagination
- */
-router.get('/vectors/browse', async (req, res) => {
-  try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const offset = req.query.offset || null;
-    const includeValues = req.query.values === 'true'; // Don't include values by default (large)
-
-    if (!await isQdrantAvailable()) {
-      return res.status(503).json({ error: true, message: 'Qdrant not available' });
-    }
-
-    const result = await scrollVectors(limit, offset, includeValues);
-
-    res.json({
-      points: result.points.map(point => ({
-        id: point.id,
-        payload: point.payload,
-        dimension: includeValues && point.vector ? point.vector.length : null,
-        vector: includeValues ? point.vector : null,
-        vectorPreview: includeValues && point.vector
-          ? `[${point.vector.slice(0, 5).map(v => v.toFixed(4)).join(', ')}...]`
-          : null,
-      })),
-      nextOffset: result.nextOffset,
-      hasMore: result.nextOffset !== null,
-    });
-  } catch (error) {
-    console.error('Browse vectors error:', error);
     res.status(500).json({ error: true, message: error.message });
   }
 });

@@ -260,6 +260,30 @@ export async function scrollVectors(limit = 10, offset = null, includeVector = f
 }
 
 /**
+ * Clear all vectors from the collection
+ */
+export async function clearCollection() {
+  if (!await isQdrantAvailable()) {
+    throw new Error('Qdrant not available');
+  }
+
+  const qdrant = getQdrantClient();
+  const collection = config.qdrant.collection;
+
+  try {
+    // Delete the collection
+    await qdrant.deleteCollection(collection);
+    console.log(`Deleted Qdrant collection: ${collection}`);
+    return { deleted: true };
+  } catch (error) {
+    if (error.message?.includes('not found')) {
+      return { deleted: false, message: 'Collection did not exist' };
+    }
+    throw error;
+  }
+}
+
+/**
  * Get detailed collection info including config
  */
 export async function getCollectionInfo() {
