@@ -27,7 +27,7 @@
       @click="expanded = !expanded"
       class="mt-2 text-xs text-blue-600 hover:text-blue-700"
     >
-      {{ expanded ? 'Show less' : 'Show more' }}
+      {{ expanded ? $t('common.showLess') : $t('common.showMore') }}
     </button>
 
     <!-- Expanded Content -->
@@ -58,7 +58,7 @@ export default {
   methods: {
     formatScore(score) {
       if (!score) return ''
-      return (score * 100).toFixed(0) + '% match'
+      return (score * 100).toFixed(0) + '% ' + this.$t('common.match')
     },
   },
 }

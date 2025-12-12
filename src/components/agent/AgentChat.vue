@@ -7,9 +7,9 @@
         <!-- Welcome Message -->
         <div v-if="messages.length === 0" class="text-center py-12">
           <font-awesome-icon icon="robot" class="text-5xl text-blue-600 mb-4" />
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">Legal Document Assistant</h2>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('agent.welcomeTitle') }}</h2>
           <p class="text-gray-500 max-w-md mx-auto">
-            Ask questions about your documents. I'll search through the content and provide answers with citations.
+            {{ $t('agent.welcomeMessage') }}
           </p>
         </div>
 
@@ -28,7 +28,7 @@
           </div>
           <div class="bg-gray-100 rounded-lg p-4">
             <font-awesome-icon icon="spinner" spin class="text-blue-600" />
-            <span class="ml-2 text-gray-600">Thinking...</span>
+            <span class="ml-2 text-gray-600">{{ $t('agent.thinking') }}</span>
           </div>
         </div>
       </div>
@@ -38,10 +38,12 @@
         <div class="flex items-end space-x-2">
           <div class="flex-1">
             <textarea
+              ref="inputField"
               v-model="inputText"
-              placeholder="Ask a question about your documents..."
+              :disabled="loading"
+              :placeholder="$t('agent.placeholder')"
               rows="2"
-              class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none"
+              class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none disabled:bg-gray-100"
               @keydown.enter.exact.prevent="sendMessage"
             ></textarea>
           </div>
@@ -58,7 +60,7 @@
         <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
           <div class="flex items-center space-x-4">
             <label class="flex items-center">
-              <span class="mr-1">Chunks:</span>
+              <span class="mr-1">{{ $t('agent.chunks') }}</span>
               <input
                 v-model.number="chunkLimit"
                 type="number"
@@ -68,9 +70,9 @@
               />
             </label>
             <label v-if="documents.length > 0" class="flex items-center">
-              <span class="mr-1">Document:</span>
+              <span class="mr-1">{{ $t('agent.document') }}</span>
               <select v-model="selectedDocument" class="border-gray-300 rounded text-xs">
-                <option value="">All</option>
+                <option value="">{{ $t('agent.allDocuments') }}</option>
                 <option v-for="doc in documents" :key="doc.id" :value="doc.id">
                   {{ doc.original_name }}
                 </option>
@@ -81,7 +83,7 @@
             @click="clearConversation"
             class="text-gray-400 hover:text-gray-600"
           >
-            Clear chat
+            {{ $t('agent.clearChat') }}
           </button>
         </div>
       </div>
@@ -94,7 +96,7 @@
     >
       <div class="p-4">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900">Sources</h3>
+          <h3 class="font-semibold text-gray-900">{{ $t('agent.sources') }}</h3>
           <button @click="showSources = false" class="text-gray-400 hover:text-gray-600">
             <font-awesome-icon icon="times" />
           </button>
@@ -187,12 +189,18 @@ export default {
         console.error('Chat error:', error)
         this.messages.push({
           role: 'assistant',
-          content: 'Sorry, an error occurred. Please try again.',
+          content: this.$t('agent.errorMessage'),
           error: true,
         })
       } finally {
         this.loading = false
-        this.scrollToBottom()
+        this.$nextTick(() => {
+          this.scrollToBottom()
+          // Focus input field so user can type next question
+          if (this.$refs.inputField) {
+            this.$refs.inputField.focus()
+          }
+        })
       }
     },
     scrollToBottom() {
@@ -204,9 +212,11 @@ export default {
       })
     },
     clearConversation() {
-      this.messages = []
+      this.messages.splice(0, this.messages.length)
       this.conversationId = null
       this.currentSources = []
+      this.showSources = false
+      this.inputText = ''
     },
     viewSource(source) {
       this.currentSources = [source]

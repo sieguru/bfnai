@@ -3,14 +3,14 @@
     <!-- Results Header -->
     <div v-if="results.length > 0" class="flex items-center justify-between mb-4">
       <p class="text-sm text-gray-600">
-        Found {{ results.length }} results in {{ searchTimeMs }}ms
+        {{ $t('search.foundResults', { count: results.length, time: searchTimeMs }) }}
       </p>
     </div>
 
     <!-- Empty State -->
     <div v-if="results.length === 0 && !loading" class="text-center py-12">
       <font-awesome-icon icon="search" class="text-4xl text-gray-300 mb-4" />
-      <p class="text-gray-500">{{ hasSearched ? 'No results found' : 'Enter a query to search' }}</p>
+      <p class="text-gray-500">{{ hasSearched ? $t('search.noResultsFound') : $t('search.enterQuery') }}</p>
     </div>
 
     <!-- Results List -->
@@ -69,7 +69,7 @@
 
         <!-- Stats -->
         <div class="mt-2 flex items-center text-xs text-gray-400 space-x-4">
-          <span>{{ result.chunk?.token_estimate || result.payload?.token_count }} tokens</span>
+          <span>{{ result.chunk?.token_estimate || result.payload?.token_count }} {{ $t('common.tokens') }}</span>
         </div>
       </div>
     </div>

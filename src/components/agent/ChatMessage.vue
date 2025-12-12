@@ -26,13 +26,19 @@
         ]"
       >
         <!-- Message Text -->
-        <div class="prose prose-sm max-w-none" :class="{ 'prose-invert': message.role === 'user' }">
-          <div v-html="formattedContent" class="whitespace-pre-wrap"></div>
+        <div
+          class="prose prose-sm max-w-none"
+          :class="{
+            'prose-invert': message.role === 'user',
+            'prose-blue': message.role === 'user'
+          }"
+        >
+          <div v-html="formattedContent"></div>
         </div>
 
         <!-- Citations (for assistant messages) -->
         <div v-if="message.role === 'assistant' && message.chunksUsed?.length > 0" class="mt-3 pt-3 border-t border-gray-200">
-          <p class="text-xs text-gray-500 mb-2">Sources used:</p>
+          <p class="text-xs text-gray-500 mb-2">{{ $t('agent.sourcesUsed') }}</p>
           <div class="flex flex-wrap gap-1">
             <button
               v-for="(chunk, index) in message.chunksUsed.slice(0, 5)"
@@ -56,6 +62,14 @@
 </template>
 
 <script>
+import { marked } from 'marked'
+
+// Configure marked for safe rendering
+marked.setOptions({
+  breaks: true,  // Convert \n to <br>
+  gfm: true,     // GitHub Flavored Markdown
+})
+
 export default {
   name: 'ChatMessage',
   props: {
@@ -67,21 +81,30 @@ export default {
   emits: ['view-source'],
   computed: {
     formattedContent() {
-      let content = this.escapeHtml(this.message.content)
+      let content = this.message.content
 
-      // Format citations [Document: X, Section: Y]
+      // For user messages, just escape and return
+      if (this.message.role === 'user') {
+        return this.escapeHtml(content)
+      }
+
+      // For assistant messages, render markdown
+      // First, format special citations before markdown parsing
       content = content.replace(
         /\[Document:\s*([^,\]]+),\s*Section:\s*([^\]]+)\]/g,
-        '<span class="inline-flex items-center px-1 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">[📄 $1 > $2]</span>'
+        '`[📄 $1 › $2]`'
       )
 
-      // Format quotes
-      content = content.replace(
-        /"([^"]+)"/g,
-        '<span class="italic">"$1"</span>'
+      // Parse markdown
+      let html = marked.parse(content)
+
+      // Style the citation spans
+      html = html.replace(
+        /<code>\[📄 ([^›]+) › ([^\]]+)\]<\/code>/g,
+        '<span class="inline-flex items-center px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded not-prose">[📄 $1 › $2]</span>'
       )
 
-      return content
+      return html
     },
   },
   methods: {
@@ -97,3 +120,90 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* Ensure proper prose styling for markdown content */
+.prose :deep(ul) {
+  list-style-type: disc;
+  padding-left: 1.5em;
+}
+
+.prose :deep(ol) {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+}
+
+.prose :deep(li) {
+  margin: 0.25em 0;
+}
+
+.prose :deep(p) {
+  margin: 0.5em 0;
+}
+
+.prose :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.prose :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.prose :deep(code) {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0.125em 0.25em;
+  border-radius: 0.25em;
+  font-size: 0.875em;
+}
+
+.prose :deep(pre) {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0.75em;
+  border-radius: 0.375em;
+  overflow-x: auto;
+}
+
+.prose :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+.prose :deep(blockquote) {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1em;
+  margin: 0.5em 0;
+  font-style: italic;
+}
+
+.prose :deep(h1),
+.prose :deep(h2),
+.prose :deep(h3) {
+  font-weight: 600;
+  margin: 0.75em 0 0.5em;
+}
+
+.prose :deep(h1) {
+  font-size: 1.25em;
+}
+
+.prose :deep(h2) {
+  font-size: 1.125em;
+}
+
+.prose :deep(h3) {
+  font-size: 1em;
+}
+
+/* User message styling adjustments */
+.prose-invert :deep(code) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.prose-invert :deep(pre) {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.prose-invert :deep(blockquote) {
+  border-left-color: rgba(255, 255, 255, 0.5);
+}
+</style>

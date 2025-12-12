@@ -3,12 +3,12 @@
     <!-- Controls -->
     <div class="flex flex-wrap items-center gap-4 mb-4">
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600">Document:</label>
+        <label class="text-sm text-gray-600">{{ $t('common.document') }}:</label>
         <select
           v-model="selectedDocument"
           class="border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
         >
-          <option value="">All Documents</option>
+          <option value="">{{ $t('chunks.allDocuments') }}</option>
           <option v-for="doc in documents" :key="doc.id" :value="doc.id">
             {{ doc.original_name }}
           </option>
@@ -18,7 +18,7 @@
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="Search chunks..."
+        :placeholder="$t('chunks.searchChunks')"
         class="border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
         @input="debouncedSearch"
       />
@@ -53,12 +53,12 @@
     </div>
 
     <!-- Loading -->
-    <LoadingSpinner v-if="loading" text="Loading chunks..." />
+    <LoadingSpinner v-if="loading" :text="$t('chunks.loadingChunks')" />
 
     <!-- Empty State -->
     <div v-else-if="chunks.length === 0" class="text-center py-12">
       <font-awesome-icon icon="layer-group" class="text-4xl text-gray-300 mb-4" />
-      <p class="text-gray-500">No chunks found</p>
+      <p class="text-gray-500">{{ $t('chunks.noChunks') }}</p>
     </div>
 
     <!-- List View -->
@@ -77,7 +77,7 @@
           @click="loadMore"
           class="text-blue-600 hover:text-blue-700"
         >
-          Load more...
+          {{ $t('chunks.loadMore') }}
         </button>
       </div>
     </div>

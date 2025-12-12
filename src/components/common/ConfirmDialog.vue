@@ -13,8 +13,8 @@
 
         <!-- Content -->
         <div class="mt-4 text-center">
-          <h3 class="text-lg font-semibold text-gray-900">{{ title }}</h3>
-          <p class="mt-2 text-sm text-gray-500">{{ message }}</p>
+          <h3 class="text-lg font-semibold text-gray-900">{{ title || $t('common.confirmAction') }}</h3>
+          <p class="mt-2 text-sm text-gray-500">{{ message || $t('common.confirmMessage') }}</p>
         </div>
 
         <!-- Actions -->
@@ -23,7 +23,7 @@
             @click="cancel"
             class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {{ cancelText }}
+            {{ cancelText || $t('common.cancel') }}
           </button>
           <button
             @click="confirm"
@@ -32,7 +32,7 @@
               confirmClass
             ]"
           >
-            {{ confirmText }}
+            {{ confirmText || $t('common.confirm') }}
           </button>
         </div>
       </div>
@@ -50,11 +50,11 @@ export default {
     },
     title: {
       type: String,
-      default: 'Confirm Action',
+      default: null,
     },
     message: {
       type: String,
-      default: 'Are you sure you want to proceed?',
+      default: null,
     },
     type: {
       type: String,
@@ -63,11 +63,11 @@ export default {
     },
     confirmText: {
       type: String,
-      default: 'Confirm',
+      default: null,
     },
     cancelText: {
       type: String,
-      default: 'Cancel',
+      default: null,
     },
   },
   emits: ['confirm', 'cancel'],

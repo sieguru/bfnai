@@ -2,44 +2,44 @@
   <div>
     <div v-if="!documentId" class="text-center py-8">
       <font-awesome-icon icon="sitemap" class="text-4xl text-gray-300 mb-4" />
-      <p class="text-gray-500 mb-2">Tree view requires a specific document</p>
-      <p class="text-sm text-gray-400">Use the dropdown above to select a document</p>
+      <p class="text-gray-500 mb-2">{{ $t('chunks.treeViewRequiresDocument') }}</p>
+      <p class="text-sm text-gray-400">{{ $t('chunks.selectDocumentAbove') }}</p>
     </div>
 
-    <LoadingSpinner v-else-if="loading" text="Loading tree..." />
+    <LoadingSpinner v-else-if="loading" :text="$t('chunks.loadingTree')" />
 
     <div v-else-if="tree" class="space-y-1">
       <!-- Summary banner -->
       <div v-if="summary" class="mb-4 p-3 bg-gray-50 rounded-lg border">
         <div class="flex items-center justify-between">
           <span class="text-sm text-gray-600">
-            <strong>{{ summary.totalChunks }}</strong> chunks total
+            <strong>{{ summary.totalChunks }}</strong> {{ $t('chunks.chunksTotal') }}
           </span>
           <div class="text-xs space-x-3">
             <span class="text-green-600">
               <font-awesome-icon icon="sitemap" class="mr-1" />
-              {{ summary.chunksWithHierarchy }} with hierarchy
+              {{ summary.chunksWithHierarchy }} {{ $t('chunks.withHierarchy') }}
             </span>
             <span :class="summary.chunksWithoutHierarchy > 0 ? 'text-amber-600' : 'text-gray-400'">
               <font-awesome-icon icon="file-alt" class="mr-1" />
-              {{ summary.chunksWithoutHierarchy }} orphan
+              {{ summary.chunksWithoutHierarchy }} {{ $t('chunks.orphan') }}
             </span>
           </div>
         </div>
         <p v-if="summary.chunksWithoutHierarchy > 0 && summary.chunksWithHierarchy === 0" class="text-xs text-amber-600 mt-2">
           <font-awesome-icon icon="exclamation-triangle" class="mr-1" />
-          No hierarchy detected. Configure heading styles in Documents and re-process to enable hierarchy.
+          {{ $t('chunks.noHierarchyDetected') }}
         </p>
       </div>
 
       <div v-if="tree.children.length > 0" class="flex items-center justify-between mb-4">
-        <span class="text-sm text-gray-500">Hierarchy</span>
+        <span class="text-sm text-gray-500">{{ $t('chunks.hierarchy') }}</span>
         <div class="space-x-2">
           <button @click="expandAll" class="text-xs text-blue-600 hover:text-blue-700">
-            Expand All
+            {{ $t('chunks.expandAll') }}
           </button>
           <button @click="collapseAll" class="text-xs text-blue-600 hover:text-blue-700">
-            Collapse All
+            {{ $t('chunks.collapseAll') }}
           </button>
         </div>
       </div>
@@ -57,8 +57,8 @@
       <div v-if="tree.chunks && tree.chunks.length > 0" class="mt-4">
         <div class="flex items-center mb-2">
           <font-awesome-icon icon="folder-open" class="text-amber-500 mr-2" />
-          <span class="text-sm font-medium text-gray-700">Orphan Chunks (No Hierarchy)</span>
-          <span class="ml-2 text-xs text-gray-400">{{ tree.chunks.length }} chunks</span>
+          <span class="text-sm font-medium text-gray-700">{{ $t('chunks.orphanChunks') }}</span>
+          <span class="ml-2 text-xs text-gray-400">{{ tree.chunks.length }} {{ $t('common.chunks') }}</span>
         </div>
         <div class="ml-4 space-y-1 border-l-2 border-amber-200 pl-3">
           <div
@@ -69,14 +69,14 @@
           >
             <font-awesome-icon icon="file-alt" class="text-amber-400 mr-2" />
             <span class="text-sm text-gray-700 truncate flex-1">{{ chunk.preview }}</span>
-            <span class="text-xs text-gray-400">{{ chunk.tokenEstimate }} tokens</span>
+            <span class="text-xs text-gray-400">{{ chunk.tokenEstimate }} {{ $t('common.tokens') }}</span>
           </div>
           <button
             v-if="tree.chunks.length > orphanChunksLimit"
             @click="showMoreOrphans"
             class="w-full py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
           >
-            Show more ({{ tree.chunks.length - orphanChunksLimit }} remaining)
+            {{ $t('chunks.showMore', { count: tree.chunks.length - orphanChunksLimit }) }}
           </button>
         </div>
       </div>
@@ -84,7 +84,7 @@
       <!-- Empty state when no chunks at all -->
       <div v-if="tree.children.length === 0 && (!tree.chunks || tree.chunks.length === 0)" class="text-center py-8">
         <font-awesome-icon icon="folder-open" class="text-4xl text-gray-300 mb-4" />
-        <p class="text-gray-500">No chunks found for this document</p>
+        <p class="text-gray-500">{{ $t('chunks.noChunksForDocument') }}</p>
       </div>
     </div>
   </div>

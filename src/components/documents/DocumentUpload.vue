@@ -16,19 +16,19 @@
     />
 
     <font-awesome-icon icon="cloud-upload-alt" class="text-5xl text-gray-400 mb-4" />
-    <h3 class="text-lg font-medium text-gray-900 mb-2">Upload Documents</h3>
-    <p class="text-sm text-gray-500 mb-4">Drag and drop .docx files here, or click to select</p>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">{{ $t('documents.uploadDocuments') }}</h3>
+    <p class="text-sm text-gray-500 mb-4">{{ $t('documents.uploadDescription') }}</p>
 
     <button
       @click="$refs.fileInput.click()"
       class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
     >
-      Select Files
+      {{ $t('documents.selectFiles') }}
     </button>
 
     <!-- Upload Queue -->
     <div v-if="uploadQueue.length > 0" class="mt-6 text-left">
-      <h4 class="text-sm font-medium text-gray-700 mb-2">Upload Queue</h4>
+      <h4 class="text-sm font-medium text-gray-700 mb-2">{{ $t('documents.uploadQueue') }}</h4>
       <div class="space-y-2">
         <div
           v-for="(file, index) in uploadQueue"
@@ -75,7 +75,7 @@
           @click="clearQueue"
           class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
         >
-          Clear
+          {{ $t('documents.clear') }}
         </button>
         <button
           @click="uploadAll"
@@ -83,7 +83,7 @@
           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
           <font-awesome-icon v-if="isUploading" icon="spinner" spin class="mr-2" />
-          Upload All
+          {{ $t('documents.uploadAll') }}
         </button>
       </div>
     </div>
@@ -117,7 +117,7 @@ export default {
     addFiles(files) {
       const validFiles = files.filter(file => {
         if (!file.name.toLowerCase().endsWith('.docx')) {
-          alert(`${file.name} is not a .docx file`)
+          alert(`${file.name} ${this.$t('documents.notDocxFile')}`)
           return false
         }
         return true

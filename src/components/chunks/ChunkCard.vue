@@ -20,7 +20,7 @@
               <span class="truncate max-w-[150px]">{{ part }}</span>
             </template>
           </div>
-          <span v-else class="text-xs text-gray-400 italic">No hierarchy</span>
+          <span v-else class="text-xs text-gray-400 italic">{{ $t('chunks.noHierarchy') }}</span>
         </div>
 
         <!-- Document Name -->
@@ -33,7 +33,7 @@
       <!-- Stats -->
       <div class="flex items-center space-x-2 text-xs text-gray-500 flex-shrink-0">
         <span class="px-2 py-0.5 bg-gray-100 rounded">
-          {{ chunk.token_estimate }} tokens
+          {{ chunk.token_estimate }} {{ $t('common.tokens') }}
         </span>
         <span class="text-gray-400">#{{ chunk.id }}</span>
       </div>
@@ -51,7 +51,7 @@
         class="text-xs text-gray-500 hover:text-gray-700"
       >
         <font-awesome-icon icon="copy" class="mr-1" />
-        Copy
+        {{ $t('common.copy') }}
       </button>
     </div>
   </div>

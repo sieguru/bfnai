@@ -52,7 +52,7 @@
           </div>
         </div>
         <div class="mt-4 text-xs text-gray-500">
-          Status: {{ stats.vectors.status || 'N/A' }}
+          {{ $t('common.status') }}: {{ stats.vectors.status || $t('common.na') }}
         </div>
       </div>
 

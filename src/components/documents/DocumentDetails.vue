@@ -22,7 +22,7 @@
       <div>
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-medium text-gray-900">
-            Detected Styles
+            {{ $t('documents.detectedStyles') }}
             <span v-if="styles.length" class="ml-2 text-sm font-normal text-gray-500">({{ styles.length }})</span>
           </h3>
           <div class="space-x-2">
@@ -33,20 +33,20 @@
               class="text-sm text-blue-600 hover:text-blue-700"
             >
               <font-awesome-icon v-if="analyzingStyles" icon="spinner" spin class="mr-1" />
-              Analyze Styles
+              {{ $t('documents.analyzeStyles') }}
             </button>
             <button
               v-else
               @click="applyDefaults"
               class="text-sm text-blue-600 hover:text-blue-700"
             >
-              Apply Defaults
+              {{ $t('documents.applyDefaults') }}
             </button>
           </div>
         </div>
 
         <div v-if="styles.length === 0" class="text-sm text-gray-500 py-4 text-center">
-          Click "Analyze Styles" to detect styles in this document
+          {{ $t('documents.clickAnalyzeStyles') }}
         </div>
 
         <div v-else class="space-y-2 max-h-64 overflow-y-auto">
@@ -58,21 +58,21 @@
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-gray-900">{{ style.style_name }}</p>
               <p class="text-xs text-gray-500 truncate">{{ style.sample_text }}</p>
-              <span class="text-xs text-gray-400">{{ style.occurrence_count }} occurrences</span>
+              <span class="text-xs text-gray-400">{{ style.occurrence_count }} {{ $t('documents.occurrences') }}</span>
             </div>
             <select
               :value="styleConfig[style.style_name] ?? ''"
               @change="onStyleChange(style.style_name, $event)"
               class="ml-2 text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="">Body Text</option>
-              <option value="1">Heading 1</option>
-              <option value="2">Heading 2</option>
-              <option value="3">Heading 3</option>
-              <option value="4">Heading 4</option>
-              <option value="5">Heading 5</option>
-              <option value="6">Heading 6</option>
-              <option value="ignore">Ignore</option>
+              <option value="">{{ $t('documents.bodyText') }}</option>
+              <option value="1">{{ $t('documents.heading') }} 1</option>
+              <option value="2">{{ $t('documents.heading') }} 2</option>
+              <option value="3">{{ $t('documents.heading') }} 3</option>
+              <option value="4">{{ $t('documents.heading') }} 4</option>
+              <option value="5">{{ $t('documents.heading') }} 5</option>
+              <option value="6">{{ $t('documents.heading') }} 6</option>
+              <option value="ignore">{{ $t('documents.ignore') }}</option>
             </select>
           </div>
         </div>
@@ -80,12 +80,12 @@
 
       <!-- Processing Options -->
       <div>
-        <h3 class="font-medium text-gray-900 mb-3">Processing Options</h3>
+        <h3 class="font-medium text-gray-900 mb-3">{{ $t('documents.processingOptions') }}</h3>
 
         <div class="space-y-4">
           <div>
             <label class="block text-sm text-gray-700 mb-1">
-              Chunk Size (tokens): {{ chunkSize }}
+              {{ $t('documents.chunkSizeTokens') }} {{ chunkSize }}
             </label>
             <input
               type="range"
@@ -103,7 +103,7 @@
 
           <div>
             <label class="block text-sm text-gray-700 mb-1">
-              Overlap (paragraphs): {{ chunkOverlap }}
+              {{ $t('documents.overlapParagraphs') }} {{ chunkOverlap }}
             </label>
             <input
               type="range"
@@ -128,33 +128,33 @@
         class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <font-awesome-icon v-if="processing" icon="spinner" spin class="mr-2" />
-        {{ processing ? 'Processing...' : 'Process Document' }}
+        {{ processing ? $t('documents.processingStatus') : $t('documents.processDocument') }}
       </button>
 
       <!-- Processing Progress -->
       <div v-if="processing" class="space-y-2">
-        <ProgressBar :value="processProgress" label="Processing" />
+        <ProgressBar :value="processProgress" :label="$t('documents.processing')" />
         <p class="text-sm text-gray-500 text-center">{{ processStatus }}</p>
       </div>
 
       <!-- Chunk Statistics (after processing) -->
       <div v-if="document.status === 'completed' && chunkStats" class="bg-gray-50 rounded-lg p-4">
-        <h3 class="font-medium text-gray-900 mb-3">Chunk Statistics</h3>
+        <h3 class="font-medium text-gray-900 mb-3">{{ $t('documents.chunkStatistics') }}</h3>
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span class="text-gray-500">Total Chunks:</span>
+            <span class="text-gray-500">{{ $t('documents.totalChunks') }}</span>
             <span class="ml-2 font-medium">{{ chunkStats.totalChunks }}</span>
           </div>
           <div>
-            <span class="text-gray-500">Avg Tokens:</span>
+            <span class="text-gray-500">{{ $t('documents.avgTokens') }}</span>
             <span class="ml-2 font-medium">{{ chunkStats.avgTokens }}</span>
           </div>
           <div>
-            <span class="text-gray-500">Min Tokens:</span>
+            <span class="text-gray-500">{{ $t('documents.minTokens') }}</span>
             <span class="ml-2 font-medium">{{ chunkStats.minTokens }}</span>
           </div>
           <div>
-            <span class="text-gray-500">Max Tokens:</span>
+            <span class="text-gray-500">{{ $t('documents.maxTokens') }}</span>
             <span class="ml-2 font-medium">{{ chunkStats.maxTokens }}</span>
           </div>
         </div>
@@ -342,7 +342,7 @@ export default {
     async processDocument() {
       this.processing = true
       this.processProgress = 0
-      this.processStatus = 'Starting...'
+      this.processStatus = this.$t('documents.starting')
 
       try {
         // Use streaming endpoint with progress updates
@@ -360,13 +360,13 @@ export default {
         )
 
         this.processProgress = 100
-        this.processStatus = 'Complete!'
+        this.processStatus = this.$t('documents.complete')
         this.chunkStats = response.data.stats
 
         this.$emit('processed', response.data)
       } catch (error) {
         console.error('Processing failed:', error)
-        this.processStatus = 'Failed: ' + (error.response?.data?.message || error.message)
+        this.processStatus = this.$t('documents.failed') + ' ' + (error.response?.data?.message || error.message)
       } finally {
         this.processing = false
       }

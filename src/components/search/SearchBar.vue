@@ -7,7 +7,7 @@
         <input
           v-model="query"
           type="text"
-          placeholder="Enter your search query..."
+          :placeholder="$t('search.placeholder')"
           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           @keyup.enter="search"
         />
@@ -25,7 +25,7 @@
         class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <font-awesome-icon v-if="loading" icon="spinner" spin class="mr-2" />
-        Search
+        {{ $t('common.search') }}
       </button>
     </div>
 
@@ -33,7 +33,7 @@
     <div class="flex flex-wrap items-center gap-4">
       <!-- Document Filter -->
       <div class="flex items-center space-x-2">
-        <label class="text-sm text-gray-600">Documents:</label>
+        <label class="text-sm text-gray-600">{{ $t('search.documents') }}</label>
         <select
           v-model="selectedDocuments"
           multiple
@@ -47,7 +47,7 @@
 
       <!-- Result Count -->
       <div class="flex items-center space-x-2">
-        <label class="text-sm text-gray-600">Results:</label>
+        <label class="text-sm text-gray-600">{{ $t('search.results') }}</label>
         <input
           v-model.number="resultLimit"
           type="number"
@@ -59,19 +59,19 @@
 
       <!-- Search Type -->
       <div class="flex items-center space-x-2">
-        <label class="text-sm text-gray-600">Type:</label>
+        <label class="text-sm text-gray-600">{{ $t('search.type') }}</label>
         <select
           v-model="searchType"
           class="border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
         >
-          <option value="vector">Vector Search</option>
-          <option value="hybrid">Hybrid Search</option>
+          <option value="vector">{{ $t('search.vectorSearch') }}</option>
+          <option value="hybrid">{{ $t('search.hybridSearch') }}</option>
         </select>
       </div>
 
       <!-- Vector Weight (for hybrid) -->
       <div v-if="searchType === 'hybrid'" class="flex items-center space-x-2">
-        <label class="text-sm text-gray-600">Vector Weight:</label>
+        <label class="text-sm text-gray-600">{{ $t('search.vectorWeight') }}</label>
         <input
           v-model.number="vectorWeight"
           type="range"
@@ -86,7 +86,7 @@
 
     <!-- Recent Searches -->
     <div v-if="recentSearches.length > 0" class="flex items-center space-x-2">
-      <span class="text-xs text-gray-500">Recent:</span>
+      <span class="text-xs text-gray-500">{{ $t('common.recent') }}</span>
       <button
         v-for="recent in recentSearches.slice(0, 5)"
         :key="recent"

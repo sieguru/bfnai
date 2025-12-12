@@ -24,7 +24,7 @@
       <span class="text-sm text-gray-900 flex-1 truncate">{{ node.name }}</span>
 
       <span class="text-xs text-gray-400 ml-2">
-        {{ chunkCount }} chunk{{ chunkCount !== 1 ? 's' : '' }}
+        {{ chunkCount }} {{ $t('common.chunks') }}
       </span>
     </div>
 
@@ -51,7 +51,7 @@
         >
           <font-awesome-icon icon="file-alt" class="w-4 h-4 text-gray-400 mr-2" />
           <span class="text-sm text-gray-700 truncate flex-1">{{ chunk.preview }}</span>
-          <span class="text-xs text-gray-400">{{ chunk.tokenEstimate }} tokens</span>
+          <span class="text-xs text-gray-400">{{ chunk.tokenEstimate }} {{ $t('common.tokens') }}</span>
         </div>
       </div>
     </div>

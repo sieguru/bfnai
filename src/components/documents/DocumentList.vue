@@ -7,11 +7,11 @@
           v-model="statusFilter"
           class="border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
         >
-          <option value="">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="processing">Processing</option>
-          <option value="completed">Completed</option>
-          <option value="error">Error</option>
+          <option value="">{{ $t('documents.allStatus') }}</option>
+          <option value="pending">{{ $t('status.pending') }}</option>
+          <option value="processing">{{ $t('status.processing') }}</option>
+          <option value="completed">{{ $t('status.completed') }}</option>
+          <option value="error">{{ $t('status.error') }}</option>
         </select>
         <button
           @click="loadDocuments"
@@ -23,12 +23,12 @@
     </div>
 
     <!-- Loading -->
-    <LoadingSpinner v-if="loading" text="Loading documents..." />
+    <LoadingSpinner v-if="loading" :text="$t('documents.loadingDocuments')" />
 
     <!-- Empty State -->
     <div v-else-if="documents.length === 0" class="text-center py-12">
       <font-awesome-icon icon="file-word" class="text-4xl text-gray-300 mb-4" />
-      <p class="text-gray-500">No documents found</p>
+      <p class="text-gray-500">{{ $t('documents.noDocuments') }}</p>
     </div>
 
     <!-- Document List -->
@@ -48,9 +48,9 @@
     <ConfirmDialog
       :show="showDeleteConfirm"
       type="danger"
-      title="Delete Document"
-      :message="`Are you sure you want to delete '${documentToDelete?.original_name}'? This will also delete all associated chunks.`"
-      confirm-text="Delete"
+      :title="$t('documents.deleteDocumentTitle')"
+      :message="$t('documents.deleteDocumentConfirm', { name: documentToDelete?.original_name })"
+      :confirm-text="$t('common.delete')"
       @confirm="handleDelete"
       @cancel="showDeleteConfirm = false"
     />

@@ -3,7 +3,7 @@
     <!-- Loading indicator for full chunk data -->
     <div v-if="loadingChunk" class="p-4 text-center text-gray-500">
       <font-awesome-icon icon="spinner" spin class="mr-2" />
-      Loading chunk details...
+      {{ $t('common.loading') }}
     </div>
 
     <template v-else>
@@ -11,12 +11,12 @@
       <div class="p-4 border-b border-gray-200 flex-shrink-0">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <h3 class="font-semibold text-gray-900">Chunk #{{ displayChunk.id }}</h3>
+            <h3 class="font-semibold text-gray-900">{{ $t('common.chunk') }} #{{ displayChunk.id }}</h3>
             <span
               v-if="displayChunk.hierarchy_level"
               :class="['px-2 py-0.5 text-xs font-medium rounded', levelBadgeClass]"
             >
-              Level {{ displayChunk.hierarchy_level }}
+              {{ $t('common.level') }} {{ displayChunk.hierarchy_level }}
             </span>
           </div>
           <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
@@ -26,7 +26,7 @@
 
         <!-- Hierarchy Path -->
         <div v-if="displayChunk.hierarchy_path" class="mt-2">
-          <div class="text-xs text-gray-500 mb-1">Hierarchy Path:</div>
+          <div class="text-xs text-gray-500 mb-1">{{ $t('chunks.hierarchyPath') }}</div>
           <div class="flex items-center flex-wrap text-sm">
             <template v-for="(part, index) in hierarchyParts" :key="index">
               <span v-if="index > 0" class="mx-1 text-gray-400">›</span>
@@ -35,7 +35,7 @@
           </div>
         </div>
         <div v-else class="mt-2 text-sm text-gray-400 italic">
-          No hierarchy (orphan chunk)
+          {{ $t('chunks.noHierarchy') }}
         </div>
       </div>
 
@@ -52,7 +52,7 @@
           class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           <font-awesome-icon :icon="showVector ? 'chevron-down' : 'chevron-right'" class="w-3" />
-          Vector Embedding
+          {{ $t('chunks.vectorEmbedding') }}
           <span v-if="vectorData" class="text-xs text-gray-500 font-normal">
             ({{ vectorData.dimension }} dimensions)
           </span>
@@ -61,7 +61,7 @@
         <div v-if="showVector" class="mt-3">
           <div v-if="loadingVector" class="text-sm text-gray-500">
             <font-awesome-icon icon="spinner" spin class="mr-2" />
-            Loading vector...
+            {{ $t('chunks.loadingVector') }}
           </div>
 
           <div v-else-if="vectorError" class="text-sm text-red-600">
@@ -72,26 +72,26 @@
             <!-- Vector Stats -->
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div class="bg-gray-50 p-2 rounded">
-                <span class="text-gray-500">Dimension:</span>
+                <span class="text-gray-500">{{ $t('chunks.dimension') }}</span>
                 <span class="ml-1 font-mono">{{ vectorData.dimension }}</span>
               </div>
               <div class="bg-gray-50 p-2 rounded">
-                <span class="text-gray-500">Model:</span>
+                <span class="text-gray-500">{{ $t('chunks.model') }}</span>
                 <span class="ml-1 font-mono">{{ vectorData.embeddingModel }}</span>
               </div>
               <div class="bg-gray-50 p-2 rounded">
-                <span class="text-gray-500">Norm:</span>
+                <span class="text-gray-500">{{ $t('chunks.norm') }}</span>
                 <span class="ml-1 font-mono">{{ vectorData.stats?.norm?.toFixed(4) }}</span>
               </div>
               <div class="bg-gray-50 p-2 rounded">
-                <span class="text-gray-500">Mean:</span>
+                <span class="text-gray-500">{{ $t('chunks.mean') }}</span>
                 <span class="ml-1 font-mono">{{ vectorData.stats?.mean?.toFixed(6) }}</span>
               </div>
             </div>
 
             <!-- Vector Preview -->
             <div>
-              <div class="text-xs text-gray-500 mb-1">Vector Preview (first 20 values):</div>
+              <div class="text-xs text-gray-500 mb-1">{{ $t('chunks.vectorPreview') }}</div>
               <div class="bg-gray-900 text-green-400 p-2 rounded text-xs font-mono overflow-x-auto">
                 [{{ vectorPreview }}]
               </div>
@@ -103,7 +103,7 @@
                 @click="showFullVector = !showFullVector"
                 class="text-xs text-blue-600 hover:text-blue-700"
               >
-                {{ showFullVector ? 'Hide' : 'Show' }} full vector
+                {{ showFullVector ? $t('chunks.hideFullVector') : $t('chunks.showFullVector') }}
               </button>
               <div
                 v-if="showFullVector"
@@ -119,7 +119,7 @@
               class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
             >
               <font-awesome-icon icon="copy" class="mr-1" />
-              Copy vector as JSON
+              {{ $t('chunks.copyVectorJson') }}
             </button>
           </div>
         </div>
@@ -131,19 +131,19 @@
         <!-- Metadata -->
         <div class="grid grid-cols-2 gap-4 text-sm mb-4">
           <div>
-            <span class="text-gray-500">Document:</span>
+            <span class="text-gray-500">{{ $t('chunks.documentLabel') }}</span>
             <span class="ml-2 font-medium">{{ displayChunk.document_name }}</span>
           </div>
           <div>
-            <span class="text-gray-500">Tokens:</span>
+            <span class="text-gray-500">{{ $t('chunks.tokensLabel') }}</span>
             <span class="ml-2 font-medium">{{ displayChunk.token_estimate }}</span>
           </div>
           <div>
-            <span class="text-gray-500">Characters:</span>
+            <span class="text-gray-500">{{ $t('chunks.characters') }}</span>
             <span class="ml-2 font-medium">{{ displayChunk.content_length }}</span>
           </div>
           <div>
-            <span class="text-gray-500">Vector ID:</span>
+            <span class="text-gray-500">{{ $t('chunks.vectorId') }}</span>
             <span class="ml-2 font-medium text-xs">{{ displayChunk.vector_id || 'N/A' }}</span>
           </div>
         </div>
@@ -155,14 +155,14 @@
             class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
           >
             <font-awesome-icon icon="copy" class="mr-1" />
-            Copy
+            {{ $t('common.copy') }}
           </button>
           <button
             @click="$emit('find-similar', displayChunk)"
             class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
           >
             <font-awesome-icon icon="search" class="mr-1" />
-            Find Similar
+            {{ $t('chunks.findSimilar') }}
           </button>
         </div>
       </div>
