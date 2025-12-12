@@ -253,14 +253,16 @@ router.get('/:id/vector', async (req, res) => {
       });
     }
 
-    // Get vector from Qdrant
-    const vector = await getVector(chunk.vector_id, includeValues);
+    // Get vector from Qdrant (vector_id may be stored as string in MySQL)
+    const vectorId = typeof chunk.vector_id === 'string' ? parseInt(chunk.vector_id) : chunk.vector_id;
+    const vector = await getVector(vectorId, includeValues);
 
     if (!vector) {
       return res.status(404).json({
         error: true,
-        message: 'Vector not found in Qdrant',
+        message: 'Vector not found in Qdrant. The document may need to be reprocessed.',
         vectorId: chunk.vector_id,
+        hint: 'Try reprocessing this document to regenerate vectors',
       });
     }
 

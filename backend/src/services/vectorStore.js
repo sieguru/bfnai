@@ -206,13 +206,31 @@ export async function getVector(vectorId, includeVector = false) {
   const qdrant = getQdrantClient();
   const collection = config.qdrant.collection;
 
-  const result = await qdrant.retrieve(collection, {
-    ids: [vectorId],
-    with_payload: true,
-    with_vector: includeVector,
-  });
+  // vectorId can be either integer or UUID string depending on how vectors were stored
+  // Try to detect the format and use it as-is
+  let id = vectorId;
 
-  return result[0] || null;
+  // If it's a numeric string, convert to integer
+  if (typeof vectorId === 'string' && /^\d+$/.test(vectorId)) {
+    id = parseInt(vectorId, 10);
+  }
+
+  try {
+    const result = await qdrant.retrieve(collection, {
+      ids: [id],
+      with_payload: true,
+      with_vector: includeVector,
+    });
+
+    return result[0] || null;
+  } catch (error) {
+    // Handle case where vector doesn't exist or ID format is wrong
+    if (error.status === 400 || error.message?.includes('Bad Request')) {
+      console.warn(`Vector ${id} not found or invalid ID format`);
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**

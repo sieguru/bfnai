@@ -30,6 +30,10 @@
           <font-awesome-icon icon="clock" class="mr-1" />
           {{ formatDate(document.upload_date) }}
         </span>
+        <span>
+          <font-awesome-icon icon="hashtag" class="mr-1" />
+          {{ document.id }}
+        </span>
       </div>
 
       <!-- Actions -->
