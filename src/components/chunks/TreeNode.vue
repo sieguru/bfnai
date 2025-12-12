@@ -17,14 +17,13 @@
         class="w-4 h-4 text-gray-400 mr-2"
       />
 
-      <font-awesome-icon
-        :icon="hasChildren ? 'folder' : 'file-alt'"
-        :class="['mr-2', levelColorClass]"
-      />
+      <span :class="['px-1.5 py-0.5 text-xs font-medium rounded mr-2', levelBadgeClass]">
+        H{{ node.level }}
+      </span>
 
       <span class="text-sm text-gray-900 flex-1 truncate">{{ node.name }}</span>
 
-      <span class="text-xs text-gray-400">
+      <span class="text-xs text-gray-400 ml-2">
         {{ chunkCount }} chunk{{ chunkCount !== 1 ? 's' : '' }}
       </span>
     </div>
@@ -91,16 +90,16 @@ export default {
     chunkCount() {
       return this.countChunks(this.node)
     },
-    levelColorClass() {
-      const colors = [
-        'text-blue-600',
-        'text-green-600',
-        'text-purple-600',
-        'text-orange-600',
-        'text-pink-600',
-        'text-teal-600',
-      ]
-      return colors[(this.node.level - 1) % colors.length]
+    levelBadgeClass() {
+      const colors = {
+        1: 'bg-red-100 text-red-700',
+        2: 'bg-orange-100 text-orange-700',
+        3: 'bg-yellow-100 text-yellow-700',
+        4: 'bg-green-100 text-green-700',
+        5: 'bg-blue-100 text-blue-700',
+        6: 'bg-purple-100 text-purple-700',
+      }
+      return colors[this.node.level] || 'bg-gray-100 text-gray-700'
     },
   },
   methods: {

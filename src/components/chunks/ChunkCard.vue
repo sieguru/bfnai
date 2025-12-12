@@ -6,12 +6,21 @@
     <!-- Header -->
     <div class="flex items-start justify-between mb-2">
       <div class="flex-1 min-w-0">
-        <!-- Hierarchy Breadcrumb -->
-        <div v-if="chunk.hierarchy_path" class="flex items-center text-xs text-gray-500 mb-1">
-          <template v-for="(part, index) in hierarchyParts" :key="index">
-            <span v-if="index > 0" class="mx-1">></span>
-            <span class="truncate">{{ part }}</span>
-          </template>
+        <!-- Hierarchy Level Badge + Breadcrumb -->
+        <div class="flex items-center flex-wrap gap-1 mb-1">
+          <span
+            v-if="chunk.hierarchy_level"
+            :class="['px-1.5 py-0.5 text-xs font-medium rounded', levelColorClass]"
+          >
+            H{{ chunk.hierarchy_level }}
+          </span>
+          <div v-if="chunk.hierarchy_path" class="flex items-center text-xs text-gray-500">
+            <template v-for="(part, index) in hierarchyParts" :key="index">
+              <span v-if="index > 0" class="mx-1 text-gray-400">›</span>
+              <span class="truncate max-w-[150px]">{{ part }}</span>
+            </template>
+          </div>
+          <span v-else class="text-xs text-gray-400 italic">No hierarchy</span>
         </div>
 
         <!-- Document Name -->
@@ -66,6 +75,17 @@ export default {
     hierarchyParts() {
       if (!this.chunk.hierarchy_path) return []
       return this.chunk.hierarchy_path.split(' > ')
+    },
+    levelColorClass() {
+      const colors = {
+        1: 'bg-red-100 text-red-700',
+        2: 'bg-orange-100 text-orange-700',
+        3: 'bg-yellow-100 text-yellow-700',
+        4: 'bg-green-100 text-green-700',
+        5: 'bg-blue-100 text-blue-700',
+        6: 'bg-purple-100 text-purple-700',
+      }
+      return colors[this.chunk.hierarchy_level] || 'bg-gray-100 text-gray-700'
     },
     contentPreview() {
       const content = this.chunk.content || ''

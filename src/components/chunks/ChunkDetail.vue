@@ -3,18 +3,32 @@
     <!-- Header -->
     <div class="p-4 border-b border-gray-200 flex-shrink-0">
       <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-gray-900">Chunk #{{ chunk.id }}</h3>
+        <div class="flex items-center gap-2">
+          <h3 class="font-semibold text-gray-900">Chunk #{{ chunk.id }}</h3>
+          <span
+            v-if="chunk.hierarchy_level"
+            :class="['px-2 py-0.5 text-xs font-medium rounded', levelBadgeClass]"
+          >
+            Level {{ chunk.hierarchy_level }}
+          </span>
+        </div>
         <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
           <font-awesome-icon icon="times" />
         </button>
       </div>
 
       <!-- Hierarchy Path -->
-      <div v-if="chunk.hierarchy_path" class="mt-2 flex items-center flex-wrap text-sm">
-        <template v-for="(part, index) in hierarchyParts" :key="index">
-          <span v-if="index > 0" class="mx-1 text-gray-400">></span>
-          <span class="text-blue-600">{{ part }}</span>
-        </template>
+      <div v-if="chunk.hierarchy_path" class="mt-2">
+        <div class="text-xs text-gray-500 mb-1">Hierarchy Path:</div>
+        <div class="flex items-center flex-wrap text-sm">
+          <template v-for="(part, index) in hierarchyParts" :key="index">
+            <span v-if="index > 0" class="mx-1 text-gray-400">›</span>
+            <span class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{{ part }}</span>
+          </template>
+        </div>
+      </div>
+      <div v-else class="mt-2 text-sm text-gray-400 italic">
+        No hierarchy (orphan chunk)
       </div>
     </div>
 
@@ -82,6 +96,17 @@ export default {
     hierarchyParts() {
       if (!this.chunk?.hierarchy_path) return []
       return this.chunk.hierarchy_path.split(' > ')
+    },
+    levelBadgeClass() {
+      const colors = {
+        1: 'bg-red-100 text-red-700',
+        2: 'bg-orange-100 text-orange-700',
+        3: 'bg-yellow-100 text-yellow-700',
+        4: 'bg-green-100 text-green-700',
+        5: 'bg-blue-100 text-blue-700',
+        6: 'bg-purple-100 text-purple-700',
+      }
+      return colors[this.chunk?.hierarchy_level] || 'bg-gray-100 text-gray-700'
     },
   },
   methods: {

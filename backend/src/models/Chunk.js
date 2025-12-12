@@ -153,6 +153,23 @@ export async function getChunksByIds(ids) {
 }
 
 /**
+ * Safely parse JSON, returning default value on error
+ * Handles both string JSON and already-parsed arrays/objects
+ */
+function safeJsonParse(value, defaultValue = []) {
+  if (!value) return defaultValue;
+  if (Array.isArray(value)) return value;  // Already parsed
+  if (typeof value === 'object') return value;  // Already an object
+  if (typeof value !== 'string') return defaultValue;
+  if (value === '') return defaultValue;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    return defaultValue;
+  }
+}
+
+/**
  * Get hierarchical tree structure for a document
  */
 export async function getChunkTree(documentId) {
@@ -167,7 +184,7 @@ export async function getChunkTree(documentId) {
   const tree = { children: [], chunks: [] };
 
   for (const chunk of chunks) {
-    const path = JSON.parse(chunk.hierarchy_json || '[]');
+    const path = safeJsonParse(chunk.hierarchy_json, []);
     let current = tree;
 
     for (let i = 0; i < path.length; i++) {
@@ -209,7 +226,7 @@ export async function getHierarchySummary(documentId) {
   const withoutHierarchy = [];
 
   for (const chunk of chunks) {
-    const hierarchyJson = JSON.parse(chunk.hierarchy_json || '[]');
+    const hierarchyJson = safeJsonParse(chunk.hierarchy_json, []);
     const summary = {
       id: chunk.id,
       index: chunk.chunk_index,

@@ -61,16 +61,17 @@
               <span class="text-xs text-gray-400">{{ style.occurrence_count }} occurrences</span>
             </div>
             <select
-              v-model="styleConfig[style.style_name]"
+              :value="styleConfig[style.style_name] ?? ''"
+              @change="onStyleChange(style.style_name, $event)"
               class="ml-2 text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
             >
-              <option :value="null">Body Text</option>
-              <option :value="1">Heading 1</option>
-              <option :value="2">Heading 2</option>
-              <option :value="3">Heading 3</option>
-              <option :value="4">Heading 4</option>
-              <option :value="5">Heading 5</option>
-              <option :value="6">Heading 6</option>
+              <option value="">Body Text</option>
+              <option value="1">Heading 1</option>
+              <option value="2">Heading 2</option>
+              <option value="3">Heading 3</option>
+              <option value="4">Heading 4</option>
+              <option value="5">Heading 5</option>
+              <option value="6">Heading 6</option>
               <option value="ignore">Ignore</option>
             </select>
           </div>
@@ -163,7 +164,7 @@
 </template>
 
 <script>
-import { analyzeDocumentStyles, getDocumentStyles, processDocument } from '@/services/api'
+import { analyzeDocumentStyles, getDocumentStyles, updateDocumentStyles, processDocument } from '@/services/api'
 import ProgressBar from '../common/ProgressBar.vue'
 
 export default {
@@ -229,10 +230,13 @@ export default {
         const response = await getDocumentStyles(this.document.id)
         this.styles = response.data.styles || []
 
-        // Initialize style config
+        // Initialize style config - convert to string values to match select options
         this.styleConfig = {}
         this.styles.forEach(style => {
-          this.styleConfig[style.style_name] = style.heading_level
+          // Convert integer heading_level to string, null to empty string
+          this.styleConfig[style.style_name] = style.heading_level != null
+            ? String(style.heading_level)
+            : ''
         })
       } catch (error) {
         console.error('Failed to load styles:', error)
@@ -244,10 +248,12 @@ export default {
         const response = await analyzeDocumentStyles(this.document.id)
         this.styles = response.data.styles || []
 
-        // Initialize style config
+        // Initialize style config - convert to string values to match select options
         this.styleConfig = {}
         this.styles.forEach(style => {
-          this.styleConfig[style.style_name] = style.heading_level
+          this.styleConfig[style.style_name] = style.heading_level != null
+            ? String(style.heading_level)
+            : ''
         })
       } catch (error) {
         console.error('Failed to analyze styles:', error)
@@ -257,26 +263,71 @@ export default {
     },
     applyDefaults() {
       const defaults = {
-        'Heading 1': 1,
-        'Heading 2': 2,
-        'Heading 3': 3,
-        'Heading 4': 4,
-        'Heading 5': 5,
-        'Heading 6': 6,
-        'Rubrik 1': 1,
-        'Rubrik 2': 2,
-        'Rubrik 3': 3,
-        'Title': 1,
-        'Subtitle': 2,
-        'Normal': null,
-        'Body Text': null,
+        'Heading 1': '1',
+        'Heading 2': '2',
+        'Heading 3': '3',
+        'Heading 4': '4',
+        'Heading 5': '5',
+        'Heading 6': '6',
+        'Rubrik 1': '1',
+        'Rubrik 2': '2',
+        'Rubrik 3': '3',
+        'Title': '1',
+        'Subtitle': '2',
+        'Normal': '',
+        'Body Text': '',
       }
 
+      const stylesToSave = []
       this.styles.forEach(style => {
         if (defaults.hasOwnProperty(style.style_name)) {
-          this.styleConfig[style.style_name] = defaults[style.style_name]
+          const value = defaults[style.style_name]
+          this.styleConfig[style.style_name] = value
+          stylesToSave.push({
+            styleName: style.style_name,
+            headingLevel: value === '' ? null : parseInt(value, 10),
+          })
         }
       })
+
+      // Save all defaults to database
+      if (stylesToSave.length > 0) {
+        this.saveAllStyleMappings(stylesToSave)
+      }
+    },
+    onStyleChange(styleName, event) {
+      const rawValue = event.target.value
+
+      // Update local state with string value for select binding
+      this.styleConfig[styleName] = rawValue
+
+      // Convert to proper type for database: empty string -> null, number strings -> integers
+      let headingLevel = null
+      if (rawValue === 'ignore') {
+        headingLevel = null  // 'ignore' is stored as null but not configured
+      } else if (rawValue && rawValue !== '') {
+        headingLevel = parseInt(rawValue, 10)
+      }
+
+      // Save to database
+      this.saveStyleMapping(styleName, headingLevel)
+    },
+    async saveStyleMapping(styleName, headingLevel) {
+      try {
+        await updateDocumentStyles(this.document.id, [{
+          styleName,
+          headingLevel: headingLevel === 'ignore' ? null : headingLevel,
+        }])
+      } catch (error) {
+        console.error('Failed to save style mapping:', error)
+      }
+    },
+    async saveAllStyleMappings(styles) {
+      try {
+        await updateDocumentStyles(this.document.id, styles)
+      } catch (error) {
+        console.error('Failed to save style mappings:', error)
+      }
     },
     async processDocument() {
       this.processing = true
@@ -284,22 +335,11 @@ export default {
       this.processStatus = 'Starting...'
 
       try {
-        // Build style mapping
-        const styleMapping = {}
-        Object.entries(this.styleConfig).forEach(([styleName, level]) => {
-          if (level !== 'ignore') {
-            styleMapping[styleName] = {
-              headingLevel: level,
-              isBodyText: level === null,
-            }
-          }
-        })
-
         this.processStatus = 'Processing document...'
         this.processProgress = 30
 
+        // Style mappings are loaded from database on the backend
         const response = await processDocument(this.document.id, {
-          styleMapping,
           chunkSize: this.chunkSize,
           chunkOverlap: this.chunkOverlap,
         })

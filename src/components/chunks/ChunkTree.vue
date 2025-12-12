@@ -28,7 +28,7 @@
         </div>
         <p v-if="summary.chunksWithoutHierarchy > 0 && summary.chunksWithHierarchy === 0" class="text-xs text-amber-600 mt-2">
           <font-awesome-icon icon="exclamation-triangle" class="mr-1" />
-          No style mappings configured. Configure heading styles in Documents → Process to enable hierarchy.
+          No hierarchy detected. Configure heading styles in Documents and re-process to enable hierarchy.
         </p>
       </div>
 
@@ -62,7 +62,7 @@
         </div>
         <div class="ml-4 space-y-1 border-l-2 border-amber-200 pl-3">
           <div
-            v-for="chunk in tree.chunks"
+            v-for="chunk in visibleOrphanChunks"
             :key="chunk.id"
             class="flex items-center p-2 rounded hover:bg-amber-50 cursor-pointer"
             @click="$emit('select', chunk)"
@@ -71,6 +71,13 @@
             <span class="text-sm text-gray-700 truncate flex-1">{{ chunk.preview }}</span>
             <span class="text-xs text-gray-400">{{ chunk.tokenEstimate }} tokens</span>
           </div>
+          <button
+            v-if="tree.chunks.length > orphanChunksLimit"
+            @click="showMoreOrphans"
+            class="w-full py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
+          >
+            Show more ({{ tree.chunks.length - orphanChunksLimit }} remaining)
+          </button>
         </div>
       </div>
 
@@ -107,6 +114,7 @@ export default {
       summary: null,
       loading: false,
       expandedNodes: new Set(),
+      orphanChunksLimit: 50,
     }
   },
   computed: {
@@ -114,11 +122,16 @@ export default {
       if (!this.tree) return 0
       return this.countChunks(this.tree)
     },
+    visibleOrphanChunks() {
+      if (!this.tree || !this.tree.chunks) return []
+      return this.tree.chunks.slice(0, this.orphanChunksLimit)
+    },
   },
   watch: {
     documentId: {
       immediate: true,
       handler(newId) {
+        this.orphanChunksLimit = 50
         if (newId) {
           this.loadTree()
         } else {
@@ -181,6 +194,9 @@ export default {
     },
     collapseAll() {
       this.expandedNodes = new Set()
+    },
+    showMoreOrphans() {
+      this.orphanChunksLimit += 50
     },
   },
 }
