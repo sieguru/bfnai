@@ -14,7 +14,53 @@ const defaultConfig = {
 };
 
 /**
- * Main function to chunk a document based on style hierarchy
+ * Chapter number mapping for Swedish BFN K3 documents
+ * Maps chapter titles to their numbers
+ */
+const CHAPTER_TITLE_TO_NUMBER = {
+  'Tillämpning': 1,
+  'Begrepp och principer': 2,
+  'Utformning av de finansiella rapporterna och förvaltningsberättelsens innehåll': 3,
+  'Balansräkning': 4,
+  'Resultaträkning': 5,
+  'Förändring i eget kapital': 6,
+  'Kassaflödesanalys': 7,
+  'Noter': 8,
+  'Koncernredovisning och andelar i dotterföretag': 9,
+  'Byte av redovisningsprincip, ändrad uppskattning och bedömning samt rättelse av fel': 10,
+  'Finansiella instrument värderade utifrån anskaffningsvärdet': 11,
+  'Finansiella instrument värderade enligt 4 kap. 14 a–14 e §§ årsredovisningslagen': 12,
+  'Varulager': 13,
+  'Intresseföretag': 14,
+  'Joint venture': 15,
+  'Noter om förvaltningsfastigheter': 16,
+  'Materiella anläggningstillgångar': 17,
+  'Immateriella tillgångar utom goodwill': 18,
+  'Rörelseförvärv och goodwill': 19,
+  'Leasingavtal': 20,
+  'Avsättningar, eventualförpliktelser och eventualtillgångar': 21,
+  'Skulder och eget kapital': 22,
+  'Intäkter': 23,
+  'Offentliga bidrag': 24,
+  'Låneutgifter': 25,
+  'Aktierelaterade ersättningar': 26,
+  'Nedskrivningar': 27,
+  'Ersättningar till anställda': 28,
+  'Inkomstskatter': 29,
+  'Effekter av ändrade valutakurser': 30,
+  'Höginflationsländer': 31,
+  'Händelser efter balansdagen': 32,
+  'Noter om närstående': 33,
+  'Jord- och skogsbruksverksamhet samt utvinning av mineraltillgångar': 34,
+  'Första gången detta allmänna råd tillämpas': 35,
+  'Särskilda regler för stiftelser och företag som drivs under stiftelseliknande former': 36,
+  'Särskilda regler för ideella föreningar, registrerade trossamfund och liknande sammanslutningar': 37,
+  'Särskilda regler för bostadsrättsföreningar': 38,
+};
+
+/**
+ * Main function to chunk a document based on number-based hierarchy
+ * Uses chapter numbers and "allmänt råd" point numbering
  */
 export async function chunkDocument(parsedDoc, styleMapping = {}, config = {}) {
   const settings = { ...defaultConfig, ...config };
@@ -24,8 +70,8 @@ export async function chunkDocument(parsedDoc, styleMapping = {}, config = {}) {
     return [];
   }
 
-  // Build hierarchy from paragraphs
-  const hierarchy = await buildHierarchy(paragraphs, styleMapping);
+  // Build number-based hierarchy from paragraphs
+  const hierarchy = await buildNumberBasedHierarchy(paragraphs, styleMapping);
 
   // Create chunks respecting hierarchy and size limits
   const chunks = createChunks(hierarchy, settings);
@@ -34,7 +80,275 @@ export async function chunkDocument(parsedDoc, styleMapping = {}, config = {}) {
 }
 
 /**
- * Build a hierarchical structure from paragraphs based on styles
+ * Styles that indicate chapter headings (Rubrik 2)
+ * K3: Chapter level, K2: Avsnitt (Section) level
+ */
+const CHAPTER_STYLES = ['Rubrik 2 indrag', 'Rubrik 2', 'heading 2'];
+
+/**
+ * Styles that indicate section headings (Rubrik 3)
+ * K3: Section level, K2: Kapitel (Chapter) level
+ */
+const SECTION_STYLES = ['Rubrik 3 indrag', 'Rubrik 3', 'heading 3'];
+
+/**
+ * Styles that indicate subsection headings (Rubrik 4)
+ */
+const SUBSECTION_STYLES = ['Rubrik 4 indrag', 'Rubrik 4', 'heading 4'];
+
+/**
+ * Styles that indicate punkt reference headings (Rubrik 5)
+ * K2 uses these to explicitly reference punkt numbers (e.g., "Punkt 1.1A")
+ */
+const PUNKT_HEADING_STYLES = ['Rubrik 5 indrag', 'Rubrik 5', 'heading 5'];
+
+/**
+ * Styles that indicate content type markers (Allmänt råd, Kommentar, Lagtext)
+ * K3: 'Rubrik 6 - spaltrubrik', K2: 'Spalttext'
+ */
+const CONTENT_TYPE_MARKER_STYLES = ['Rubrik 6 - spaltrubrik', 'Spalttext'];
+
+/**
+ * Styles that contain "Allmänt råd" body text
+ */
+const ALLMANT_RAD_BODY_STYLES = [
+  'Allmänt råd',
+  'Stycke 1',
+  'Stycke 1 indrag',
+  'Stycke 1 indrag inget avstånd',
+  'Stycke 1A indrag', // K2 specific
+  'Bokstavslista 1 indrag',
+  'Bokstavlista 2 indrag', // K2 specific
+];
+
+/**
+ * Styles that contain "Kommentar" body text
+ */
+const KOMMENTAR_BODY_STYLES = [
+  'Normal Indent',
+  'Normal indrag ej avstånd',
+  'Punktlista indrag',
+  'Punktlista 2 indrag', // K2 specific
+];
+
+/**
+ * Styles that contain "Lagtext" body text
+ */
+const LAGTEXT_BODY_STYLES = [
+  'Textruta indrag',
+  'Numrerad lista textruta',
+];
+
+/**
+ * Styles to ignore (TOC, titles, metadata, examples)
+ */
+const IGNORE_STYLES = [
+  'toc 1', 'toc 2', 'toc 3', 'toc 4', 'toc 6', 'toc 7',
+  'TOC Heading',
+  'Title', 'Subtitle',
+  'Uppdaterad datum',
+  'Rubrik 2 exempel indrag', 'Rubrik 3 exempel indrag',
+  'Rubrik 4 exempel indrag', 'Rubrik 5 exempel indrag', // Example sections
+];
+
+/**
+ * Build a number-based hierarchical structure from paragraphs
+ * Uses chapter numbers and sequential "allmänt råd" numbering
+ */
+export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
+  const root = {
+    children: [],
+    level: 0,
+    text: '',
+    paragraphs: [],
+    chapterNumber: null,
+    pointNumber: null,
+  };
+
+  let currentChapter = null;
+  let currentChapterNumber = 0;
+  let currentSection = null;
+  let currentSubsection = null;
+  let currentPointNumber = 0;
+  let currentContentType = null; // 'allmänt råd', 'kommentar', 'lagtext', or null
+  let lastAllmantRadPoint = null; // Track the last "allmänt råd" point for associating comments
+
+  for (const para of paragraphs) {
+    const style = para.style;
+    const text = para.text.trim();
+
+    // Skip ignored styles
+    if (IGNORE_STYLES.some(s => style.toLowerCase().includes(s.toLowerCase()))) {
+      continue;
+    }
+
+    // Skip empty paragraphs
+    if (!text) {
+      continue;
+    }
+
+    // Check if this is a chapter heading
+    if (CHAPTER_STYLES.some(s => style === s)) {
+      // Try to find chapter number from title
+      const chapterNum = CHAPTER_TITLE_TO_NUMBER[text] || ++currentChapterNumber;
+
+      currentChapter = {
+        level: 1,
+        text: text,
+        style: style,
+        paragraphIndex: para.index,
+        children: [],
+        paragraphs: [],
+        chapterNumber: chapterNum,
+        chapterTitle: `Kapitel ${chapterNum} – ${text}`,
+      };
+
+      root.children.push(currentChapter);
+      currentSection = null;
+      currentSubsection = null;
+      currentPointNumber = 0;
+      currentContentType = null;
+      lastAllmantRadPoint = null;
+      continue;
+    }
+
+    // Check if this is a section heading (Rubrik 3)
+    if (SECTION_STYLES.some(s => style === s)) {
+      currentSection = {
+        level: 2,
+        text: text,
+        style: style,
+        paragraphIndex: para.index,
+        children: [],
+        paragraphs: [],
+      };
+
+      if (currentChapter) {
+        currentChapter.children.push(currentSection);
+      } else {
+        root.children.push(currentSection);
+      }
+      currentSubsection = null;
+      currentContentType = null;
+      continue;
+    }
+
+    // Check if this is a subsection heading (Rubrik 4)
+    if (SUBSECTION_STYLES.some(s => style === s)) {
+      currentSubsection = {
+        level: 3,
+        text: text,
+        style: style,
+        paragraphIndex: para.index,
+        children: [],
+        paragraphs: [],
+      };
+
+      if (currentSection) {
+        currentSection.children.push(currentSubsection);
+      } else if (currentChapter) {
+        currentChapter.children.push(currentSubsection);
+      } else {
+        root.children.push(currentSubsection);
+      }
+      currentContentType = null;
+      continue;
+    }
+
+    // Check if this is a punkt heading (Rubrik 5) - K2 uses these to reference punkt numbers explicitly
+    if (PUNKT_HEADING_STYLES.some(s => style === s)) {
+      // Extract punkt number from text like "Punkt 1.1A" or "Punkt 1.1B a"
+      const punktMatch = text.match(/^Punkt\s+(\d+\.\d+[A-Z]?)/i);
+      if (punktMatch) {
+        lastAllmantRadPoint = punktMatch[1];
+      }
+      // Also treat this as a subsection for hierarchy purposes
+      currentSubsection = {
+        level: 4,
+        text: text,
+        style: style,
+        paragraphIndex: para.index,
+        children: [],
+        paragraphs: [],
+        explicitPunktRef: punktMatch ? punktMatch[1] : null,
+      };
+
+      if (currentSection) {
+        currentSection.children.push(currentSubsection);
+      } else if (currentChapter) {
+        currentChapter.children.push(currentSubsection);
+      } else {
+        root.children.push(currentSubsection);
+      }
+      currentContentType = null;
+      continue;
+    }
+
+    // Check if this is a content type marker (Allmänt råd, Kommentar, Lagtext)
+    if (CONTENT_TYPE_MARKER_STYLES.some(s => style === s)) {
+      const lowerText = text.toLowerCase();
+      if (lowerText === 'allmänt råd') {
+        currentContentType = 'allmänt råd';
+        currentPointNumber++;
+        lastAllmantRadPoint = currentChapter ?
+          `${currentChapter.chapterNumber}.${currentPointNumber}` :
+          `0.${currentPointNumber}`;
+      } else if (lowerText === 'kommentar') {
+        currentContentType = 'kommentar';
+      } else if (lowerText === 'lagtext') {
+        currentContentType = 'lagtext';
+      } else {
+        currentContentType = text; // Other markers
+      }
+      continue;
+    }
+
+    // This is body text - determine where to add it
+    const isAllmantRadBody = ALLMANT_RAD_BODY_STYLES.some(s => style === s);
+    const isKommentarBody = KOMMENTAR_BODY_STYLES.some(s => style === s);
+    const isLagtextBody = LAGTEXT_BODY_STYLES.some(s => style === s);
+
+    // Determine the content type from style if not already set
+    let effectiveContentType = currentContentType;
+    if (isAllmantRadBody && !effectiveContentType) {
+      effectiveContentType = 'allmänt råd';
+      currentPointNumber++;
+      lastAllmantRadPoint = currentChapter ?
+        `${currentChapter.chapterNumber}.${currentPointNumber}` :
+        `0.${currentPointNumber}`;
+    } else if (isKommentarBody && !effectiveContentType) {
+      effectiveContentType = 'kommentar';
+    } else if (isLagtextBody && !effectiveContentType) {
+      effectiveContentType = 'lagtext';
+    }
+
+    // Create paragraph entry with metadata
+    const paraEntry = {
+      index: para.index,
+      text: text,
+      style: style,
+      contentType: effectiveContentType,
+      pointNumber: effectiveContentType === 'allmänt råd' ? lastAllmantRadPoint : null,
+      associatedPoint: effectiveContentType === 'kommentar' ? lastAllmantRadPoint : null,
+    };
+
+    // Add to the appropriate section
+    if (currentSubsection) {
+      currentSubsection.paragraphs.push(paraEntry);
+    } else if (currentSection) {
+      currentSection.paragraphs.push(paraEntry);
+    } else if (currentChapter) {
+      currentChapter.paragraphs.push(paraEntry);
+    } else {
+      root.paragraphs.push(paraEntry);
+    }
+  }
+
+  return root;
+}
+
+/**
+ * Build a hierarchical structure from paragraphs based on styles (legacy)
  */
 export async function buildHierarchy(paragraphs, styleMapping = {}) {
   const root = { children: [], level: 0, text: '', paragraphs: [] };
@@ -85,54 +399,75 @@ export async function buildHierarchy(paragraphs, styleMapping = {}) {
 }
 
 /**
- * Create chunks from hierarchical structure
+ * Create chunks from number-based hierarchical structure
+ * Groups content by "allmänt råd" points and their associated comments
  */
 function createChunks(hierarchy, settings) {
   const chunks = [];
   let chunkIndex = 0;
 
-  function processNode(node, hierarchyPath = []) {
-    const currentPath = node.text ? [...hierarchyPath, node.text] : hierarchyPath;
+  function processNode(node, context = {}) {
+    // Build context from node
+    const currentContext = { ...context };
 
-    // Collect all body text under this node
-    let bodyText = node.paragraphs.map(p => p.text).join('\n\n');
-    const paragraphRange = {
-      start: node.paragraphs[0]?.index ?? -1,
-      end: node.paragraphs[node.paragraphs.length - 1]?.index ?? -1,
-    };
+    // Update context based on node properties
+    if (node.chapterNumber) {
+      currentContext.chapterNumber = node.chapterNumber;
+      currentContext.chapterTitle = node.chapterTitle || node.text;
+    }
+    if (node.level === 2) {
+      currentContext.sectionTitle = node.text;
+    }
+    if (node.level === 3) {
+      currentContext.subsectionTitle = node.text;
+    }
 
-    if (bodyText.trim()) {
-      // Check if we need to split this content
+    // Group paragraphs by point number (for "allmänt råd" + associated "kommentar")
+    const pointGroups = groupParagraphsByPoint(node.paragraphs);
+
+    for (const group of pointGroups) {
+      const bodyText = group.paragraphs.map(p => p.text).join('\n\n');
+      if (!bodyText.trim()) continue;
+
       const tokens = estimateTokens(bodyText);
+      const paragraphRange = {
+        start: group.paragraphs[0]?.index ?? -1,
+        end: group.paragraphs[group.paragraphs.length - 1]?.index ?? -1,
+      };
+
+      // Build hierarchy path using numbers
+      const hierarchyPath = buildNumberBasedPath(currentContext, group);
 
       if (tokens > settings.maxChunkTokens) {
         // Split into smaller chunks
-        const subChunks = splitContent(bodyText, settings, currentPath, node.paragraphs);
+        const subChunks = splitContentWithContext(bodyText, settings, hierarchyPath, group.paragraphs, group);
         subChunks.forEach(subChunk => {
           chunks.push({
             ...subChunk,
             chunkIndex: chunkIndex++,
           });
         });
-      } else if (tokens >= settings.minChunkTokens) {
-        // Create a single chunk
+      } else if (tokens >= settings.minChunkTokens || group.pointNumber) {
+        // Create a single chunk (always include if it has a point number)
         chunks.push({
           chunkIndex: chunkIndex++,
           content: bodyText.trim(),
-          hierarchyPath: currentPath.join(' > '),
-          hierarchyJson: currentPath,
-          hierarchyLevel: currentPath.length,
+          hierarchyPath: hierarchyPath.join(' > '),
+          hierarchyJson: hierarchyPath,
+          hierarchyLevel: hierarchyPath.length,
           paragraphStart: paragraphRange.start,
           paragraphEnd: paragraphRange.end,
           tokenEstimate: tokens,
           contentLength: bodyText.length,
           chunkHash: generateContentHash(bodyText),
+          pointNumber: group.pointNumber,
+          contentTypes: group.contentTypes,
         });
       }
     }
 
     // Process child sections
-    node.children.forEach(child => processNode(child, currentPath));
+    node.children.forEach(child => processNode(child, currentContext));
   }
 
   processNode(hierarchy);
@@ -142,9 +477,99 @@ function createChunks(hierarchy, settings) {
 }
 
 /**
- * Split large content into smaller chunks
+ * Group paragraphs by point number
+ * Groups "allmänt råd" with their associated "kommentar" sections
  */
-function splitContent(text, settings, hierarchyPath, paragraphs) {
+function groupParagraphsByPoint(paragraphs) {
+  const groups = [];
+  let currentGroup = null;
+
+  for (const para of paragraphs) {
+    const pointNumber = para.pointNumber || para.associatedPoint;
+
+    if (para.contentType === 'allmänt råd' && para.pointNumber) {
+      // Start a new group for this "allmänt råd"
+      if (currentGroup && currentGroup.paragraphs.length > 0) {
+        groups.push(currentGroup);
+      }
+      currentGroup = {
+        pointNumber: para.pointNumber,
+        contentTypes: new Set(['allmänt råd']),
+        paragraphs: [para],
+      };
+    } else if (currentGroup && pointNumber === currentGroup.pointNumber) {
+      // Add to current group (associated kommentar or continuation)
+      currentGroup.paragraphs.push(para);
+      if (para.contentType) {
+        currentGroup.contentTypes.add(para.contentType);
+      }
+    } else if (currentGroup && para.contentType === 'kommentar' && !pointNumber) {
+      // Kommentar without explicit point - associate with current point
+      currentGroup.paragraphs.push(para);
+      currentGroup.contentTypes.add('kommentar');
+    } else {
+      // Unassociated content - start new group or add to generic group
+      if (currentGroup && currentGroup.paragraphs.length > 0) {
+        groups.push(currentGroup);
+      }
+      currentGroup = {
+        pointNumber: pointNumber || null,
+        contentTypes: new Set(para.contentType ? [para.contentType] : []),
+        paragraphs: [para],
+      };
+    }
+  }
+
+  if (currentGroup && currentGroup.paragraphs.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  // Convert Sets to arrays for JSON serialization
+  return groups.map(g => ({
+    ...g,
+    contentTypes: Array.from(g.contentTypes),
+  }));
+}
+
+/**
+ * Build a number-based hierarchy path
+ */
+function buildNumberBasedPath(context, group) {
+  const path = [];
+
+  // Add chapter with number
+  if (context.chapterNumber) {
+    path.push(`Kapitel ${context.chapterNumber}`);
+  }
+
+  // Add section title if available
+  if (context.sectionTitle) {
+    path.push(context.sectionTitle);
+  }
+
+  // Add subsection title if available
+  if (context.subsectionTitle) {
+    path.push(context.subsectionTitle);
+  }
+
+  // Add point number if this is an "allmänt råd" chunk
+  if (group.pointNumber) {
+    path.push(`punkt ${group.pointNumber}`);
+  }
+
+  // Add content type indicators
+  if (group.contentTypes && group.contentTypes.length > 0) {
+    const types = group.contentTypes.join(', ');
+    path.push(`[${types}]`);
+  }
+
+  return path;
+}
+
+/**
+ * Split large content into smaller chunks (with context)
+ */
+function splitContentWithContext(text, settings, hierarchyPath, paragraphs, group) {
   const chunks = [];
   const paragraphTexts = text.split('\n\n').filter(p => p.trim());
   let currentChunkParagraphs = [];
@@ -167,6 +592,8 @@ function splitContent(text, settings, hierarchyPath, paragraphs) {
         tokenEstimate: currentTokens,
         contentLength: chunkText.length,
         chunkHash: generateContentHash(chunkText),
+        pointNumber: group.pointNumber,
+        contentTypes: group.contentTypes,
       });
 
       // Start new chunk with overlap
@@ -192,6 +619,8 @@ function splitContent(text, settings, hierarchyPath, paragraphs) {
       tokenEstimate: estimateTokens(chunkText),
       contentLength: chunkText.length,
       chunkHash: generateContentHash(chunkText),
+      pointNumber: group.pointNumber,
+      contentTypes: group.contentTypes,
     });
   }
 

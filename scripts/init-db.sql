@@ -74,7 +74,7 @@ CREATE TABLE chunks (
     content_length INT,
     token_estimate INT,
 
-    hierarchy_path VARCHAR(500),
+    hierarchy_path VARCHAR(1000),
     hierarchy_json JSON,
     hierarchy_level INT,
 
