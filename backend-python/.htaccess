@@ -1,0 +1,52 @@
+# .htaccess for Loopia shared hosting (Python/WSGI)
+# Place this file in the public_html or api subdirectory
+
+# Enable rewrite engine
+RewriteEngine On
+
+# Set the base path (adjust if API is in subdirectory)
+# RewriteBase /api/
+
+# Pass all requests to WSGI application
+# Loopia uses Passenger for Python - adjust handler as needed
+# Option 1: For mod_wsgi
+# AddHandler wsgi-script .py
+# Options +ExecCGI
+
+# Option 2: For Phusion Passenger (more common on shared hosts)
+# PassengerAppRoot /home/username/public_html/api
+# PassengerPython /home/username/.local/bin/python3
+
+# Route all API requests to the Flask app
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ wsgi.py/$1 [QSA,L]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Deny access to sensitive files
+<FilesMatch "\.(env|py|pyc|pyo|db)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Allow access to wsgi.py (entry point)
+<Files "wsgi.py">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+</Files>

@@ -5,8 +5,9 @@
   "description": "Backend for Legal Document RAG Application",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "start": "NODE_ENV=production node src/index.js",
+    "dev": "node --watch src/index.js",
+    "build": "echo 'No build step required'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

@@ -3,7 +3,8 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { dirname, join, extname } from 'path';
-import { unlink } from 'fs/promises';
+import { unlink, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 
 import * as Document from '../models/Document.js';
 import * as Chunk from '../models/Chunk.js';
@@ -17,9 +18,16 @@ const __dirname = dirname(__filename);
 
 const router = Router();
 
+// Ensure uploads directory exists
+const uploadsDir = join(__dirname, '..', '..', 'uploads');
+if (!existsSync(uploadsDir)) {
+  await mkdir(uploadsDir, { recursive: true });
+  console.log('Created uploads directory:', uploadsDir);
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: join(__dirname, '..', '..', 'uploads'),
+  destination: uploadsDir,
   filename: (req, file, cb) => {
     const uniqueName = `${uuidv4()}${extname(file.originalname)}`;
     cb(null, uniqueName);

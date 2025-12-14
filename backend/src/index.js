@@ -13,9 +13,22 @@ import agentRoutes from './routes/agent.js';
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: config.nodeEnv === 'production'
+    ? process.env.CORS_ORIGIN?.split(',') || true  // Set CORS_ORIGIN in production, or allow all
+    : true,  // Allow all in development
+  credentials: true,
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
+
+// Trust proxy (for Railway/Render behind load balancer)
+if (config.nodeEnv === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // Health check
 app.get('/api/health', async (req, res) => {
@@ -76,9 +89,10 @@ app.use((req, res) => {
 
 // Start server
 const PORT = config.port;
+const HOST = config.nodeEnv === 'production' ? '0.0.0.0' : 'localhost';
 
-app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, HOST, async () => {
+  console.log(`Server running on ${HOST}:${PORT}`);
   console.log(`Environment: ${config.nodeEnv}`);
   console.log(`Embedding provider: ${config.embedding.provider}`);
 
@@ -88,3 +102,21 @@ app.listen(PORT, async () => {
     await ensurePayloadIndexes(config.qdrant.collection);
   }
 });
+
+// Graceful shutdown
+const shutdown = (signal) => {
+  console.log(`\n${signal} received, shutting down gracefully...`);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+
+  // Force close after 10 seconds
+  setTimeout(() => {
+    console.error('Could not close connections in time, forcing shutdown');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

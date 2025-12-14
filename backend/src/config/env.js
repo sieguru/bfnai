@@ -1,12 +1,23 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env from project root
-dotenv.config({ path: join(__dirname, '..', '..', '..', '.env') });
+// Load .env - try backend folder first (for deployment), then project root (for local dev)
+const backendEnvPath = join(__dirname, '..', '..', '.env');
+const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
+
+if (existsSync(backendEnvPath)) {
+  dotenv.config({ path: backendEnvPath });
+} else if (existsSync(rootEnvPath)) {
+  dotenv.config({ path: rootEnvPath });
+} else {
+  // In production (Railway/Render), env vars are set directly - no .env file needed
+  dotenv.config();
+}
 
 export default {
   port: process.env.PORT || 3000,
