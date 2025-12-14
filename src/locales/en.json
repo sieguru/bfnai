@@ -167,6 +167,7 @@
     "title": "AI Agent",
     "welcomeTitle": "Legal Document Assistant",
     "welcomeMessage": "Ask questions about your documents. I'll search through the content and provide answers with citations.",
+    "sampleQuestions": "Try a sample question:",
     "thinking": "Thinking...",
     "placeholder": "Ask a question about your documents...",
     "chunks": "Chunks:",

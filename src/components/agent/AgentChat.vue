@@ -8,9 +8,25 @@
         <div v-if="messages.length === 0" class="text-center py-12">
           <font-awesome-icon icon="robot" class="text-5xl text-blue-600 mb-4" />
           <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('agent.welcomeTitle') }}</h2>
-          <p class="text-gray-500 max-w-md mx-auto">
+          <p class="text-gray-500 max-w-md mx-auto mb-6">
             {{ $t('agent.welcomeMessage') }}
           </p>
+
+          <!-- Sample Questions -->
+          <div class="max-w-lg mx-auto">
+            <p class="text-sm text-gray-400 mb-3">{{ $t('agent.sampleQuestions') }}</p>
+            <div class="space-y-2">
+              <button
+                v-for="(question, index) in sampleQuestions"
+                :key="index"
+                @click="useSampleQuestion(question)"
+                class="block w-full text-left px-4 py-2 text-sm text-gray-700 bg-gray-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+              >
+                <font-awesome-icon icon="comment" class="text-gray-400 mr-2" />
+                {{ question }}
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Messages -->
@@ -137,6 +153,12 @@ export default {
       selectedDocument: '',
       showSources: false,
       currentSources: [],
+      sampleQuestions: [
+        'Hur ska kostnaden för pensionspremier redovisas i K2?',
+        'Vilka företag får tillämpa K2-regelverket?',
+        'Hur ska intäkter från tjänsteuppdrag redovisas?',
+        'Vad är skillnaden mellan immateriella och materiella anläggningstillgångar?',
+      ],
     }
   },
   mounted() {
@@ -221,6 +243,14 @@ export default {
     viewSource(source) {
       this.currentSources = [source]
       this.showSources = true
+    },
+    useSampleQuestion(question) {
+      this.inputText = question
+      this.$nextTick(() => {
+        if (this.$refs.inputField) {
+          this.$refs.inputField.focus()
+        }
+      })
     },
   },
 }

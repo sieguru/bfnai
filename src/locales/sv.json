@@ -167,6 +167,7 @@
     "title": "AI-assistent",
     "welcomeTitle": "Juridisk dokumentassistent",
     "welcomeMessage": "Ställ frågor om dina dokument. Jag söker igenom innehållet och ger svar med källhänvisningar.",
+    "sampleQuestions": "Prova en exempelfråga:",
     "thinking": "Tänker...",
     "placeholder": "Ställ en fråga om dina dokument...",
     "chunks": "Segment:",
