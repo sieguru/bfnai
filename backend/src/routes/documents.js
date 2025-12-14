@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
-import { dirname, join, extname } from 'path';
+import { dirname, join, extname, parse as parsePath } from 'path';
 import { unlink, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 
@@ -15,6 +15,13 @@ import { upsertVectors, deleteByDocumentId, isQdrantAvailable } from '../service
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+/**
+ * Strip file extension from a filename
+ */
+function stripExtension(filename) {
+  return parsePath(filename).name;
+}
 
 const router = Router();
 
@@ -326,7 +333,7 @@ router.post('/:id/process', async (req, res) => {
           payload: {
             chunk_id: chunkIds[idx],
             document_id: doc.id,
-            document_name: doc.original_name,
+            document_name: stripExtension(doc.original_name),
             hierarchy_path: chunk.hierarchyPath,
             text_preview: chunk.content.substring(0, 200),
             token_count: chunk.tokenEstimate,
@@ -510,7 +517,7 @@ router.post('/:id/process-stream', async (req, res) => {
           payload: {
             chunk_id: chunkIds[idx],
             document_id: doc.id,
-            document_name: doc.original_name,
+            document_name: stripExtension(doc.original_name),
             hierarchy_path: chunk.hierarchyPath,
             text_preview: chunk.content.substring(0, 200),
             token_count: chunk.tokenEstimate,

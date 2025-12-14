@@ -36,7 +36,8 @@
           <div v-html="formattedContent"></div>
         </div>
 
-        <!-- Citations (for assistant messages) -->
+<!--
+        &lt;!&ndash; Citations (for assistant messages) &ndash;&gt;
         <div v-if="message.role === 'assistant' && message.chunksUsed?.length > 0" class="mt-3 pt-3 border-t border-gray-200">
           <p class="text-xs text-gray-500 mb-2">{{ $t('agent.sourcesUsed') }}</p>
           <div class="flex flex-wrap gap-1">
@@ -50,6 +51,7 @@
             </button>
           </div>
         </div>
+-->
 
         <!-- Metadata -->
         <div v-if="message.role === 'assistant' && (message.responseTimeMs || message.tokensUsed)" class="mt-2 text-xs text-gray-400">

@@ -1,7 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { parse as parsePath } from 'path';
 import config from '../config/env.js';
 
 let anthropicClient = null;
+
+/**
+ * Strip file extension from a filename
+ */
+function stripExtension(filename) {
+  if (!filename) return filename;
+  return parsePath(filename).name;
+}
 
 const SYSTEM_PROMPT = `You are a legal document assistant that answers questions EXCLUSIVELY based on the provided rules.
 
@@ -48,7 +57,7 @@ export function formatChunksForContext(chunks) {
   }
 
   const formattedChunks = chunks.map((chunk, index) => {
-    const docName = chunk.document_name || `Document ${chunk.document_id}`;
+    const docName = stripExtension(chunk.document_name) || `Document ${chunk.document_id}`;
     const section = chunk.hierarchy_path || 'Unknown section';
 
     return `<document index="${index + 1}">
