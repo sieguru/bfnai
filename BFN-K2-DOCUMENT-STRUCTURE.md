@@ -114,11 +114,12 @@ Specific terms within sections.
 
 ## Content Types
 
-Each section contains three primary content types, marked by `Spalttext`:
+Each section is preceeded by a section title and contains three primary content types, marked by `Spalttext`:
 
-### 1. Allmänt råd (General Advice)
+### 1. Allmänt råd group (General Advices)
 
 The regulatory guidance from BFN.
+Each general rule in this section has a unique punkt number. Paragraphs without a punkt number are parts of the preceeding punkt.
 
 **Marker**: `Spalttext` with text "Allmänt råd"
 
@@ -167,11 +168,8 @@ K2 uses alphanumeric point numbering:
 - Extended points: `1.1A`, `1.1B`, `1.1C`, `2.4A`, etc.
 
 ### Numbering Rules
-1. Each chapter starts numbering from 1
-2. Base numbers increment sequentially: 1.1, 1.2, 1.3...
-3. Letter suffixes (A, B, C) indicate sub-points added later via amendments
-4. Point numbers are explicitly referenced in `Rubrik 5 indrag` headings
-5. Comments are associated with the most recent punkt number
+1. Point numbers are explicitly referenced in `Rubrik 5 indrag` headings
+2. Comments are associated with the most recent "Allmänt råd group"
 
 ### Cross-References
 The document frequently references points:

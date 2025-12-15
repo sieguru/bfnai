@@ -153,7 +153,12 @@ const IGNORE_STYLES = [
 
 /**
  * Build a number-based hierarchical structure from paragraphs
- * Uses chapter numbers and sequential "allmänt råd" numbering
+ * Uses chapter numbers and explicit punkt references from Rubrik 5 headings
+ *
+ * Key rules (from BFN K2 document structure):
+ * - Punkt numbers come ONLY from explicit Rubrik 5 headings (e.g., "Punkt 1.1A")
+ * - Paragraphs without a punkt number are parts of the preceding punkt
+ * - Comments (Kommentar) are associated with the most recent "Allmänt råd group"
  */
 export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
   const root = {
@@ -169,9 +174,9 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
   let currentChapterNumber = 0;
   let currentSection = null;
   let currentSubsection = null;
-  let currentPointNumber = 0;
   let currentContentType = null; // 'allmänt råd', 'kommentar', 'lagtext', or null
-  let lastAllmantRadPoint = null; // Track the last "allmänt råd" point for associating comments
+  let currentAllmantRadGroup = null; // Track the current "Allmänt råd group" for associating comments
+  let lastExplicitPunkt = null; // Track explicit punkt number from Rubrik 5 headings
 
   for (const para of paragraphs) {
     const style = para.style;
@@ -206,9 +211,9 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       root.children.push(currentChapter);
       currentSection = null;
       currentSubsection = null;
-      currentPointNumber = 0;
       currentContentType = null;
-      lastAllmantRadPoint = null;
+      currentAllmantRadGroup = null;
+      lastExplicitPunkt = null;
       continue;
     }
 
@@ -255,12 +260,12 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       continue;
     }
 
-    // Check if this is a punkt heading (Rubrik 5) - K2 uses these to reference punkt numbers explicitly
+    // Check if this is a punkt heading (Rubrik 5) - ONLY source of explicit punkt numbers
     if (PUNKT_HEADING_STYLES.some(s => style === s)) {
       // Extract punkt number from text like "Punkt 1.1A" or "Punkt 1.1B a"
       const punktMatch = text.match(/^Punkt\s+(\d+\.\d+[A-Z]?)/i);
       if (punktMatch) {
-        lastAllmantRadPoint = punktMatch[1];
+        lastExplicitPunkt = punktMatch[1];
       }
       // Also treat this as a subsection for hierarchy purposes
       currentSubsection = {
@@ -289,12 +294,14 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       const lowerText = text.toLowerCase();
       if (lowerText === 'allmänt råd') {
         currentContentType = 'allmänt råd';
-        currentPointNumber++;
-        lastAllmantRadPoint = currentChapter ?
-          `${currentChapter.chapterNumber}.${currentPointNumber}` :
-          `0.${currentPointNumber}`;
+        // Start a new "Allmänt råd group" - use the last explicit punkt if available
+        currentAllmantRadGroup = {
+          punktNumber: lastExplicitPunkt,
+          startedAt: para.index,
+        };
       } else if (lowerText === 'kommentar') {
         currentContentType = 'kommentar';
+        // Kommentar is associated with the current Allmänt råd group
       } else if (lowerText === 'lagtext') {
         currentContentType = 'lagtext';
       } else {
@@ -312,15 +319,21 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
     let effectiveContentType = currentContentType;
     if (isAllmantRadBody && !effectiveContentType) {
       effectiveContentType = 'allmänt råd';
-      currentPointNumber++;
-      lastAllmantRadPoint = currentChapter ?
-        `${currentChapter.chapterNumber}.${currentPointNumber}` :
-        `0.${currentPointNumber}`;
+      // If no current group, start one (continuation of previous punkt)
+      if (!currentAllmantRadGroup) {
+        currentAllmantRadGroup = {
+          punktNumber: lastExplicitPunkt,
+          startedAt: para.index,
+        };
+      }
     } else if (isKommentarBody && !effectiveContentType) {
       effectiveContentType = 'kommentar';
     } else if (isLagtextBody && !effectiveContentType) {
       effectiveContentType = 'lagtext';
     }
+
+    // Get punkt number - use explicit punkt if available, otherwise inherit from group
+    const currentPunktNumber = currentAllmantRadGroup?.punktNumber || lastExplicitPunkt;
 
     // Create paragraph entry with metadata
     const paraEntry = {
@@ -328,8 +341,10 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       text: text,
       style: style,
       contentType: effectiveContentType,
-      pointNumber: effectiveContentType === 'allmänt råd' ? lastAllmantRadPoint : null,
-      associatedPoint: effectiveContentType === 'kommentar' ? lastAllmantRadPoint : null,
+      // For allmänt råd: use the current explicit punkt (paragraphs without punkt are part of preceding punkt)
+      pointNumber: effectiveContentType === 'allmänt råd' ? currentPunktNumber : null,
+      // For kommentar: associate with the current Allmänt råd group
+      associatedGroup: effectiveContentType === 'kommentar' ? currentPunktNumber : null,
     };
 
     // Add to the appropriate section
@@ -477,46 +492,96 @@ function createChunks(hierarchy, settings) {
 }
 
 /**
- * Group paragraphs by point number
- * Groups "allmänt råd" with their associated "kommentar" sections
+ * Group paragraphs by "Allmänt råd group"
+ * Groups allmänt råd with their associated kommentar sections
+ *
+ * Key rules (from BFN K2 document structure):
+ * - Comments are associated with the most recent "Allmänt råd group"
+ * - Paragraphs without explicit punkt numbers are part of the preceding punkt
+ * - Lagtext and other content types are grouped separately
  */
 function groupParagraphsByPoint(paragraphs) {
   const groups = [];
   let currentGroup = null;
+  let currentAllmantRadGroup = null; // Track the current Allmänt råd group for associating comments
 
   for (const para of paragraphs) {
-    const pointNumber = para.pointNumber || para.associatedPoint;
+    const pointNumber = para.pointNumber || para.associatedGroup;
 
-    if (para.contentType === 'allmänt råd' && para.pointNumber) {
-      // Start a new group for this "allmänt råd"
-      if (currentGroup && currentGroup.paragraphs.length > 0) {
-        groups.push(currentGroup);
+    if (para.contentType === 'allmänt råd') {
+      // Start or continue an "Allmänt råd group"
+      if (!currentAllmantRadGroup || (para.pointNumber && para.pointNumber !== currentAllmantRadGroup.pointNumber)) {
+        // Start a new Allmänt råd group
+        if (currentGroup && currentGroup.paragraphs.length > 0) {
+          groups.push(currentGroup);
+        }
+        currentGroup = {
+          pointNumber: para.pointNumber,
+          contentTypes: new Set(['allmänt råd']),
+          paragraphs: [para],
+          isAllmantRadGroup: true,
+        };
+        currentAllmantRadGroup = currentGroup;
+      } else {
+        // Continue existing Allmänt råd group (paragraph without explicit punkt)
+        currentGroup.paragraphs.push(para);
+        if (para.contentType) {
+          currentGroup.contentTypes.add(para.contentType);
+        }
       }
-      currentGroup = {
-        pointNumber: para.pointNumber,
-        contentTypes: new Set(['allmänt råd']),
-        paragraphs: [para],
-      };
-    } else if (currentGroup && pointNumber === currentGroup.pointNumber) {
-      // Add to current group (associated kommentar or continuation)
-      currentGroup.paragraphs.push(para);
-      if (para.contentType) {
-        currentGroup.contentTypes.add(para.contentType);
+    } else if (para.contentType === 'kommentar') {
+      // Kommentar is associated with the current Allmänt råd group
+      if (currentAllmantRadGroup) {
+        currentAllmantRadGroup.paragraphs.push(para);
+        currentAllmantRadGroup.contentTypes.add('kommentar');
+        // Keep currentGroup pointing to the Allmänt råd group
+        currentGroup = currentAllmantRadGroup;
+      } else {
+        // No Allmänt råd group yet - start a standalone kommentar group
+        if (currentGroup && currentGroup.paragraphs.length > 0 && !currentGroup.isAllmantRadGroup) {
+          // Add to existing non-allmänt-råd group
+          currentGroup.paragraphs.push(para);
+          currentGroup.contentTypes.add('kommentar');
+        } else {
+          if (currentGroup && currentGroup.paragraphs.length > 0) {
+            groups.push(currentGroup);
+          }
+          currentGroup = {
+            pointNumber: pointNumber || null,
+            contentTypes: new Set(['kommentar']),
+            paragraphs: [para],
+          };
+        }
       }
-    } else if (currentGroup && para.contentType === 'kommentar' && !pointNumber) {
-      // Kommentar without explicit point - associate with current point
-      currentGroup.paragraphs.push(para);
-      currentGroup.contentTypes.add('kommentar');
-    } else {
-      // Unassociated content - start new group or add to generic group
+    } else if (para.contentType === 'lagtext') {
+      // Lagtext is typically standalone or precedes Allmänt råd
       if (currentGroup && currentGroup.paragraphs.length > 0) {
         groups.push(currentGroup);
       }
       currentGroup = {
         pointNumber: pointNumber || null,
-        contentTypes: new Set(para.contentType ? [para.contentType] : []),
+        contentTypes: new Set(['lagtext']),
         paragraphs: [para],
       };
+      // Reset Allmänt råd group when we see Lagtext (it typically starts a new section)
+      currentAllmantRadGroup = null;
+    } else {
+      // Other content - add to current group or start new one
+      if (currentGroup && !currentGroup.isAllmantRadGroup) {
+        currentGroup.paragraphs.push(para);
+        if (para.contentType) {
+          currentGroup.contentTypes.add(para.contentType);
+        }
+      } else {
+        if (currentGroup && currentGroup.paragraphs.length > 0) {
+          groups.push(currentGroup);
+        }
+        currentGroup = {
+          pointNumber: pointNumber || null,
+          contentTypes: new Set(para.contentType ? [para.contentType] : []),
+          paragraphs: [para],
+        };
+      }
     }
   }
 
@@ -526,8 +591,9 @@ function groupParagraphsByPoint(paragraphs) {
 
   // Convert Sets to arrays for JSON serialization
   return groups.map(g => ({
-    ...g,
+    pointNumber: g.pointNumber,
     contentTypes: Array.from(g.contentTypes),
+    paragraphs: g.paragraphs,
   }));
 }
 
