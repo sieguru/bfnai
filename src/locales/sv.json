@@ -5,6 +5,7 @@
   "nav": {
     "dashboard": "Översikt",
     "documents": "Dokument",
+    "hierarchy": "Hierarki",
     "chunks": "Segment",
     "search": "Sök",
     "agent": "AI-assistent"
@@ -177,5 +178,17 @@
     "sources": "Källor",
     "sourcesUsed": "Använda källor:",
     "errorMessage": "Ett fel uppstod. Försök igen."
+  },
+  "hierarchy": {
+    "title": "Dokumenthierarki",
+    "selectDocument": "Välj dokument",
+    "noDocuments": "Inga bearbetade dokument hittades",
+    "selectToView": "Välj ett dokument för att visa dess hierarki",
+    "noHierarchy": "Ingen hierarki tillgänglig. Bearbeta dokumentet först.",
+    "expandAll": "Expandera alla",
+    "collapseAll": "Fäll ihop alla",
+    "paragraphDetail": "Styckedetalj",
+    "style": "Stil",
+    "contentType": "Innehållstyp"
   }
 }

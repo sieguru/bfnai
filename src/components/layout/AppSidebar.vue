@@ -61,6 +61,7 @@ export default {
       navItems: [
         { route: '/', icon: 'home', labelKey: 'dashboard' },
         { route: '/documents', icon: 'file-word', labelKey: 'documents' },
+        { route: '/hierarchy', icon: 'sitemap', labelKey: 'hierarchy' },
         { route: '/chunks', icon: 'layer-group', labelKey: 'chunks' },
         { route: '/search', icon: 'search', labelKey: 'search' },
         { route: '/agent', icon: 'robot', labelKey: 'agent' },

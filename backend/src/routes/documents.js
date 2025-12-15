@@ -195,6 +195,31 @@ router.post('/:id/analyze-styles', async (req, res) => {
 });
 
 /**
+ * GET /api/documents/:id/hierarchy
+ * Get document hierarchy JSON
+ */
+router.get('/:id/hierarchy', async (req, res) => {
+  try {
+    const doc = await Document.getDocumentById(req.params.id);
+
+    if (!doc) {
+      return res.status(404).json({ error: true, message: 'Document not found' });
+    }
+
+    const hierarchy = await Document.getDocumentHierarchy(req.params.id);
+
+    res.json({
+      documentId: doc.id,
+      documentName: doc.original_name,
+      hierarchy,
+    });
+  } catch (error) {
+    console.error('Get hierarchy error:', error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+/**
  * GET /api/documents/:id/styles
  * Get detected styles for a document
  */
@@ -282,10 +307,15 @@ router.post('/:id/process', async (req, res) => {
     }
 
     // Chunk document
-    const chunks = await chunkDocument(parsedDoc, finalStyleMapping, {
+    const { chunks, hierarchy } = await chunkDocument(parsedDoc, finalStyleMapping, {
       maxChunkTokens: chunkSize,
       overlapParagraphs: chunkOverlap,
     });
+
+    // Save hierarchy to database
+    if (hierarchy) {
+      await Document.saveDocumentHierarchy(doc.id, hierarchy);
+    }
 
     // Delete existing chunks for this document
     await Chunk.deleteChunksByDocumentId(doc.id);
@@ -443,10 +473,15 @@ router.post('/:id/process-stream', async (req, res) => {
 
     sendProgress('chunking', 15, 'Chunking document...');
 
-    const chunks = await chunkDocument(parsedDoc, finalStyleMapping, {
+    const { chunks, hierarchy } = await chunkDocument(parsedDoc, finalStyleMapping, {
       maxChunkTokens: chunkSize,
       overlapParagraphs: chunkOverlap,
     });
+
+    // Save hierarchy to database
+    if (hierarchy) {
+      await Document.saveDocumentHierarchy(doc.id, hierarchy);
+    }
 
     sendProgress('chunking', 20, `Created ${chunks.length} chunks`);
 

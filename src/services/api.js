@@ -36,6 +36,8 @@ export const analyzeDocumentStyles = (id) => api.post(`/documents/${id}/analyze-
 
 export const getDocumentStyles = (id) => api.get(`/documents/${id}/styles`)
 
+export const getDocumentHierarchy = (id) => api.get(`/documents/${id}/hierarchy`)
+
 export const updateDocumentStyles = (id, styles) => api.put(`/documents/${id}/styles`, { styles })
 
 export const processDocument = (id, options = {}) => api.post(`/documents/${id}/process`, options)

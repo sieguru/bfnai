@@ -38,7 +38,10 @@ export async function getDocumentById(id) {
 export async function getAllDocuments(options = {}) {
   const { status, limit = 100, offset = 0 } = options;
 
-  let sql = 'SELECT * FROM documents';
+  // Exclude hierarchy_json to avoid sort memory issues with large JSON columns
+  let sql = `SELECT id, filename, original_name, file_size, page_count,
+             upload_date, processed_date, status, error_message, metadata,
+             created_at, updated_at FROM documents`;
   const params = [];
 
   if (status) {
@@ -153,4 +156,27 @@ export async function updateDocumentStyleConfig(documentId, styleName, headingLe
      WHERE document_id = ? AND style_name = ?`,
     [headingLevel, isConfigured, documentId, styleName]
   );
+}
+
+/**
+ * Save document hierarchy JSON
+ */
+export async function saveDocumentHierarchy(id, hierarchyJson) {
+  return update(
+    'UPDATE documents SET hierarchy_json = ? WHERE id = ?',
+    [JSON.stringify(hierarchyJson), id]
+  );
+}
+
+/**
+ * Get document hierarchy JSON
+ */
+export async function getDocumentHierarchy(id) {
+  const doc = await queryOne('SELECT hierarchy_json FROM documents WHERE id = ?', [id]);
+  if (!doc || !doc.hierarchy_json) {
+    return null;
+  }
+  return typeof doc.hierarchy_json === 'string'
+    ? JSON.parse(doc.hierarchy_json)
+    : doc.hierarchy_json;
 }

@@ -61,13 +61,14 @@ const CHAPTER_TITLE_TO_NUMBER = {
 /**
  * Main function to chunk a document based on number-based hierarchy
  * Uses chapter numbers and "allmänt råd" point numbering
+ * Returns both chunks and the hierarchy structure
  */
 export async function chunkDocument(parsedDoc, styleMapping = {}, config = {}) {
   const settings = { ...defaultConfig, ...config };
   const { paragraphs } = parsedDoc;
 
   if (!paragraphs || paragraphs.length === 0) {
-    return [];
+    return { chunks: [], hierarchy: null };
   }
 
   // Build number-based hierarchy from paragraphs
@@ -76,7 +77,7 @@ export async function chunkDocument(parsedDoc, styleMapping = {}, config = {}) {
   // Create chunks respecting hierarchy and size limits
   const chunks = createChunks(hierarchy, settings);
 
-  return chunks;
+  return { chunks, hierarchy };
 }
 
 /**

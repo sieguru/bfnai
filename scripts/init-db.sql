@@ -14,6 +14,7 @@ CREATE TABLE documents (
     status ENUM('pending', 'processing', 'completed', 'error') DEFAULT 'pending',
     error_message TEXT,
     metadata JSON,
+    hierarchy_json JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

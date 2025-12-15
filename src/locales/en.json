@@ -5,6 +5,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "documents": "Documents",
+    "hierarchy": "Hierarchy",
     "chunks": "Chunks",
     "search": "Search",
     "agent": "AI Agent"
@@ -177,5 +178,17 @@
     "sources": "Sources",
     "sourcesUsed": "Sources used:",
     "errorMessage": "Sorry, an error occurred. Please try again."
+  },
+  "hierarchy": {
+    "title": "Document Hierarchy",
+    "selectDocument": "Select Document",
+    "noDocuments": "No processed documents found",
+    "selectToView": "Select a document to view its hierarchy",
+    "noHierarchy": "No hierarchy available. Process the document first.",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All",
+    "paragraphDetail": "Paragraph Detail",
+    "style": "Style",
+    "contentType": "Content Type"
   }
 }

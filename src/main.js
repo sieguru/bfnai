@@ -51,6 +51,7 @@ import {
   faHashtag,
   faInfoCircle,
   faComment,
+  faSitemap,
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -62,7 +63,7 @@ library.add(
   faExternalLinkAlt, faQuoteLeft, faStar, faThumbsUp, faThumbsDown,
   faSync, faFilter, faList, faTree, faFile, faPlay, faCheck,
   faExclamationTriangle, faClock, faDatabase, faServer, faGlobe, faHashtag,
-  faInfoCircle, faComment
+  faInfoCircle, faComment, faSitemap
 )
 
 import './assets/main.css'
