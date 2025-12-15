@@ -76,6 +76,13 @@
       >
         <div class="flex items-start gap-2">
           <span
+            v-if="para.listMarker"
+            class="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-amber-100 text-amber-800 font-mono font-semibold"
+            :title="'List marker: ' + para.listMarker"
+          >
+            {{ para.listMarker }}
+          </span>
+          <span
             v-if="para.contentType"
             :class="[
               'px-1.5 py-0.5 text-xs rounded flex-shrink-0',
@@ -91,7 +98,7 @@
           >
             {{ truncateStyle(para.style) }}
           </span>
-          <span class="text-gray-700 line-clamp-2">{{ para.text }}</span>
+          <span class="text-gray-700 line-clamp-2">{{ stripListMarker(para) }}</span>
         </div>
       </div>
 
@@ -209,6 +216,20 @@ export default {
         return short.substring(0, 18) + '…'
       }
       return short
+    },
+    stripListMarker(para) {
+      // Remove the list marker prefix from text since it's shown as a badge
+      if (para.listMarker && para.text) {
+        const marker = para.listMarker
+        const text = para.text
+        // Check if text starts with the marker (with optional space)
+        if (text.startsWith(marker + ' ')) {
+          return text.substring(marker.length + 1)
+        } else if (text.startsWith(marker)) {
+          return text.substring(marker.length)
+        }
+      }
+      return para.text
     },
   },
 }

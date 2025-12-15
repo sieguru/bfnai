@@ -480,6 +480,8 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       contentType: effectiveContentType,
       pointNumber: effectiveContentType === 'allmänt råd' ? currentPunktNumber : null,
       associatedGroup: effectiveContentType === 'kommentar' ? currentPunktNumber : null,
+      listMarker: para.listMarker || null,
+      hasListMarker: para.hasListMarker || false,
     });
   }
 
