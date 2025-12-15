@@ -31,7 +31,10 @@
       <!-- Node title -->
       <div class="flex-1 min-w-0">
         <div class="font-medium text-gray-900 truncate">{{ node.text || '(Untitled)' }}</div>
-        <div v-if="node.chapterTitle" class="text-xs text-gray-500">{{ node.chapterTitle }}</div>
+        <div class="flex items-center gap-2 mt-0.5">
+          <span v-if="node.style" class="text-xs text-gray-400 font-mono" :title="node.style">{{ truncateStyle(node.style) }}</span>
+          <span v-if="node.chapterTitle" class="text-xs text-gray-500">{{ node.chapterTitle }}</span>
+        </div>
       </div>
 
       <!-- Stats -->
@@ -76,6 +79,13 @@
             ]"
           >
             {{ para.contentType }}
+          </span>
+          <span
+            v-if="para.style"
+            class="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-slate-100 text-slate-600 font-mono"
+            :title="para.style"
+          >
+            {{ truncateStyle(para.style) }}
           </span>
           <span class="text-gray-700 line-clamp-2">{{ para.text }}</span>
         </div>
@@ -178,6 +188,17 @@ export default {
         'lagtext': 'bg-yellow-100 text-yellow-700',
       }
       return classes[type?.toLowerCase()] || 'bg-gray-100 text-gray-700'
+    },
+    truncateStyle(style) {
+      // Shorten common Swedish style name patterns for display
+      if (!style) return ''
+      // Remove " indrag" suffix for brevity
+      let short = style.replace(/ indrag$/, '')
+      // Truncate if still too long
+      if (short.length > 20) {
+        return short.substring(0, 18) + '…'
+      }
+      return short
     },
   },
 }
