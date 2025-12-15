@@ -261,21 +261,66 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
     paragraphs: [],
     chapterNumber: null,
     pointNumber: null,
+    parent: null, // Root has no parent
   };
 
-  // K2 hierarchy tracking (6 levels)
-  let currentDocumentPart = null; // Level 0 - Rubrik 1
-  let currentAvsnitt = null;       // Level 1 - Rubrik 2 (Avsnitt/Section)
-  let currentKapitel = null;       // Level 2 - Rubrik 3 (Kapitel/Chapter)
-  let currentSubsection = null;    // Level 3 - Rubrik 4
-  let currentPunktRef = null;      // Level 4 - Rubrik 5 (explicit punkt headings)
-  let currentTermDef = null;       // Level 5 - Rubrik 6 (term definitions)
+  // Track only the last added node and last paragraph container
+  let lastNode = root;
+  let lastParagraphContainer = root;
 
+  // Counters for chapter/section numbering
   let currentChapterNumber = 0;
   let currentAvsnittNumber = 0;
-  let currentContentType = null;     // 'allmänt råd', 'kommentar', 'lagtext', or null
-  let currentAllmantRadGroup = null; // Track the current "Allmänt råd group" for associating comments
-  let lastExplicitPunkt = null;      // Track explicit punkt number from Rubrik 5 headings
+
+  // Content tracking
+  let currentContentType = null;
+  let currentAllmantRadGroup = null;
+  let lastExplicitPunkt = null;
+
+  /**
+   * Find the appropriate parent for a new node at the given level
+   * by reverse-traversing from lastNode until we find a node at a higher level (lower number)
+   */
+  function findParentForLevel(targetLevel) {
+    let node = lastNode;
+    while (node && node.level >= targetLevel) {
+      node = node.parent;
+    }
+    return node || root;
+  }
+
+  /**
+   * Add a new node to the tree at the specified level
+   */
+  function addNode(nodeData) {
+    const parent = findParentForLevel(nodeData.level);
+    nodeData.parent = parent;
+    nodeData.children = [];
+    nodeData.paragraphs = [];
+    parent.children.push(nodeData);
+    lastNode = nodeData;
+    lastParagraphContainer = nodeData;
+
+    // Reset content tracking when adding structural nodes
+    if (nodeData.level <= 5) {
+      currentContentType = null;
+    }
+    if (nodeData.level <= 4) {
+      currentAllmantRadGroup = null;
+    }
+    if (nodeData.level <= 3) {
+      lastExplicitPunkt = null;
+    }
+
+    return nodeData;
+  }
+
+  /**
+   * Add a paragraph to the last paragraph container
+   */
+  function addParagraph(paraEntry) {
+    lastParagraphContainer.paragraphs.push(paraEntry);
+  }
 
   for (const para of paragraphs) {
     const style = para.style;
@@ -291,188 +336,89 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       continue;
     }
 
-    // Level 0: Document Parts (Rubrik 1) - Major divisions
+    // Level 1: Document Parts (Rubrik 1) - Major divisions
     if (DOCUMENT_PART_STYLES.some(s => style === s)) {
-      currentDocumentPart = {
+      addNode({
         level: 1,
         text: text,
         style: style,
         paragraphIndex: para.index,
-        children: [],
-        paragraphs: [],
         nodeType: 'documentPart',
-      };
-
-      root.children.push(currentDocumentPart);
-      // Reset all lower levels
-      currentAvsnitt = null;
-      currentKapitel = null;
-      currentSubsection = null;
-      currentPunktRef = null;
-      currentTermDef = null;
-      currentContentType = null;
-      currentAllmantRadGroup = null;
-      lastExplicitPunkt = null;
+      });
       continue;
     }
 
-    // Level 1: Avsnitt/Section (Rubrik 2) - K2 has 9 Avsnitt
+    // Level 2: Avsnitt/Section (Rubrik 2) - K2 has 9 Avsnitt
     if (AVSNITT_STYLES.some(s => style === s)) {
       currentAvsnittNumber++;
-      currentAvsnitt = {
+      addNode({
         level: 2,
         text: text,
         style: style,
         paragraphIndex: para.index,
-        children: [],
-        paragraphs: [],
         nodeType: 'avsnitt',
         avsnittNumber: currentAvsnittNumber,
         avsnittTitle: `Avsnitt ${toRomanNumeral(currentAvsnittNumber)} – ${text}`,
-      };
-
-      if (currentDocumentPart) {
-        currentDocumentPart.children.push(currentAvsnitt);
-      } else {
-        root.children.push(currentAvsnitt);
-      }
-      // Reset lower levels
-      currentKapitel = null;
-      currentSubsection = null;
-      currentPunktRef = null;
-      currentTermDef = null;
-      currentContentType = null;
-      currentAllmantRadGroup = null;
-      lastExplicitPunkt = null;
+      });
       continue;
     }
 
-    // Level 2: Kapitel/Chapter (Rubrik 3) - K2 has 21 chapters
+    // Level 3: Kapitel/Chapter (Rubrik 3) - K2 has 21 chapters
     if (KAPITEL_STYLES.some(s => style === s)) {
-      // Try to find chapter number from K2 mapping, fallback to K3, then auto-increment
       const chapterNum = K2_CHAPTER_TITLE_TO_NUMBER[text] ||
                          K3_CHAPTER_TITLE_TO_NUMBER[text] ||
                          ++currentChapterNumber;
 
-      currentKapitel = {
+      addNode({
         level: 3,
         text: text,
         style: style,
         paragraphIndex: para.index,
-        children: [],
-        paragraphs: [],
         nodeType: 'kapitel',
-        //chapterNumber: chapterNum,
         chapterTitle: `Kapitel ${chapterNum} – ${text}`,
-      };
-
-      if (currentAvsnitt) {
-        currentAvsnitt.children.push(currentKapitel);
-      } else if (currentDocumentPart) {
-        currentDocumentPart.children.push(currentKapitel);
-      } else {
-        root.children.push(currentKapitel);
-      }
-      // Reset lower levels
-      currentSubsection = null;
-      currentPunktRef = null;
-      currentTermDef = null;
-      currentContentType = null;
-      currentAllmantRadGroup = null;
-      lastExplicitPunkt = null;
+      });
       continue;
     }
 
-    // Level 3: Subsection (Rubrik 4)
+    // Level 4: Subsection (Rubrik 4)
     if (SUBSECTION_STYLES.some(s => style === s)) {
-      currentSubsection = {
+      addNode({
         level: 4,
         text: text,
         style: style,
         paragraphIndex: para.index,
-        children: [],
-        paragraphs: [],
         nodeType: 'subsection',
-      };
-
-      if (currentKapitel) {
-        currentKapitel.children.push(currentSubsection);
-      } else if (currentAvsnitt) {
-        currentAvsnitt.children.push(currentSubsection);
-      } else if (currentDocumentPart) {
-        currentDocumentPart.children.push(currentSubsection);
-      } else {
-        root.children.push(currentSubsection);
-      }
-      // Reset lower levels
-      currentPunktRef = null;
-      currentTermDef = null;
-      currentContentType = null;
+      });
       continue;
     }
 
-    // Level 4: Punkt Reference (Rubrik 5) - ONLY source of explicit punkt numbers
+    // Level 5: Punkt Reference (Rubrik 5) - ONLY source of explicit punkt numbers
     if (PUNKT_HEADING_STYLES.some(s => style === s)) {
-      // Extract punkt number from text like "Punkt 1.1A" or "Punkt 1.1B a"
       const punktMatch = text.match(/^Punkt\s+(\d+\.\d+[A-Z]?)/i);
       if (punktMatch) {
         lastExplicitPunkt = punktMatch[1];
       }
 
-      currentPunktRef = {
+      addNode({
         level: 5,
         text: text,
         style: style,
         paragraphIndex: para.index,
-        children: [],
-        paragraphs: [],
         nodeType: 'punktRef',
         explicitPunktRef: punktMatch ? punktMatch[1] : null,
-      };
-
-      if (currentSubsection) {
-        currentSubsection.children.push(currentPunktRef);
-      } else if (currentKapitel) {
-        currentKapitel.children.push(currentPunktRef);
-      } else if (currentAvsnitt) {
-        currentAvsnitt.children.push(currentPunktRef);
-      } else if (currentDocumentPart) {
-        currentDocumentPart.children.push(currentPunktRef);
-      } else {
-        root.children.push(currentPunktRef);
-      }
-      // Reset lower levels
-      currentTermDef = null;
-      currentContentType = null;
+      });
       continue;
     }
 
-    // Level 5: Term Definition (Rubrik 6) - Specific terms like "Nettoomsättning"
+    // Level 6: Term Definition (Rubrik 6) - Specific terms like "Nettoomsättning"
     if (TERM_DEFINITION_STYLES.some(s => style === s)) {
-      currentTermDef = {
+      addNode({
         level: 6,
         text: text,
         style: style,
         paragraphIndex: para.index,
-        children: [],
-        paragraphs: [],
         nodeType: 'termDefinition',
-      };
-
-      if (currentPunktRef) {
-        currentPunktRef.children.push(currentTermDef);
-      } else if (currentSubsection) {
-        currentSubsection.children.push(currentTermDef);
-      } else if (currentKapitel) {
-        currentKapitel.children.push(currentTermDef);
-      } else if (currentAvsnitt) {
-        currentAvsnitt.children.push(currentTermDef);
-      } else if (currentDocumentPart) {
-        currentDocumentPart.children.push(currentTermDef);
-      } else {
-        root.children.push(currentTermDef);
-      }
-      currentContentType = null;
+      });
       continue;
     }
 
@@ -481,58 +427,38 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       const lowerText = text.toLowerCase();
       if (lowerText === 'allmänt råd') {
         currentContentType = 'allmänt råd';
-        // Start a new "Allmänt råd group" - use the last explicit punkt if available
         currentAllmantRadGroup = {
           punktNumber: lastExplicitPunkt,
           startedAt: para.index,
         };
       } else if (lowerText === 'kommentar') {
         currentContentType = 'kommentar';
-        // Kommentar is associated with the current Allmänt råd group
       } else if (lowerText === 'lagtext') {
         currentContentType = 'lagtext';
       } else {
-        currentContentType = text; // Other markers
+        currentContentType = text;
       }
 
-      // Save the marker as a level 6 header
-      currentTermDef = {
+      // Save the marker as a level 6 node
+      addNode({
         level: 6,
         text: text,
         style: style,
         paragraphIndex: para.index,
-        children: [],
-        paragraphs: [],
-        nodeType: 'termDefinition',
-      };
-
-      if (currentPunktRef) {
-        currentPunktRef.children.push(currentTermDef);
-      } else if (currentSubsection) {
-        currentSubsection.children.push(currentTermDef);
-      } else if (currentKapitel) {
-        currentKapitel.children.push(currentTermDef);
-      } else if (currentAvsnitt) {
-        currentAvsnitt.children.push(currentTermDef);
-      } else if (currentDocumentPart) {
-        currentDocumentPart.children.push(currentTermDef);
-      } else {
-        root.children.push(currentTermDef);
-      }
-      currentContentType = null;
+        nodeType: 'contentMarker',
+        contentType: currentContentType,
+      });
       continue;
     }
 
-    // This is body text - determine where to add it
+    // This is body text - determine content type and add to current container
     const isAllmantRadBody = ALLMANT_RAD_BODY_STYLES.some(s => style === s);
     const isKommentarBody = KOMMENTAR_BODY_STYLES.some(s => style === s);
     const isLagtextBody = LAGTEXT_BODY_STYLES.some(s => style === s);
 
-    // Determine the content type from style if not already set
     let effectiveContentType = currentContentType;
     if (isAllmantRadBody && !effectiveContentType) {
       effectiveContentType = 'allmänt råd';
-      // If no current group, start one (continuation of previous punkt)
       if (!currentAllmantRadGroup) {
         currentAllmantRadGroup = {
           punktNumber: lastExplicitPunkt,
@@ -545,41 +471,32 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       effectiveContentType = 'lagtext';
     }
 
-    // Get punkt number - use explicit punkt if available, otherwise inherit from group
     const currentPunktNumber = currentAllmantRadGroup?.punktNumber || lastExplicitPunkt;
 
-    // Create paragraph entry with metadata
-    const paraEntry = {
+    addParagraph({
       index: para.index,
       text: text,
       style: style,
       contentType: effectiveContentType,
-      // For allmänt råd: use the current explicit punkt (paragraphs without punkt are part of preceding punkt)
       pointNumber: effectiveContentType === 'allmänt råd' ? currentPunktNumber : null,
-      // For kommentar: associate with the current Allmänt råd group
       associatedGroup: effectiveContentType === 'kommentar' ? currentPunktNumber : null,
-    };
-
-    // Add to the deepest available hierarchy node
-    // Priority: termDef > punktRef > subsection > kapitel > avsnitt > documentPart > root
-    if (currentTermDef) {
-      currentTermDef.paragraphs.push(paraEntry);
-    } else if (currentPunktRef) {
-      currentPunktRef.paragraphs.push(paraEntry);
-    } else if (currentSubsection) {
-      currentSubsection.paragraphs.push(paraEntry);
-    } else if (currentKapitel) {
-      currentKapitel.paragraphs.push(paraEntry);
-    } else if (currentAvsnitt) {
-      currentAvsnitt.paragraphs.push(paraEntry);
-    } else if (currentDocumentPart) {
-      currentDocumentPart.paragraphs.push(paraEntry);
-    } else {
-      root.paragraphs.push(paraEntry);
-    }
+    });
   }
 
+  // Remove parent references before returning (to avoid circular JSON)
+  removeParentReferences(root);
+
   return root;
+}
+
+/**
+ * Remove parent references from tree to allow JSON serialization
+ */
+function removeParentReferences(node) {
+  delete node.parent;
+  if (node.children) {
+    node.children.forEach(removeParentReferences);
+  }
 }
 
 /**

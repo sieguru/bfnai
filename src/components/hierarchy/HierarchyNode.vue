@@ -160,17 +160,20 @@ export default {
       if (this.node.chapterNumber) {
         return `Ch. ${this.node.chapterNumber}`
       }
-      const labels = ['Top', 'Section', 'Chapter', 'Subsection', 'Content']
+      const labels = ['Top', 'Section', 'Chapter', 'Header 4', 'Header 5', 'Header 6']
       return labels[Math.min(nodeLevel - 1, labels.length - 1)] || `L${nodeLevel}`
     },
     levelColorClass() {
       const nodeLevel = this.node.level || this.level + 1
       const colors = [
-        'bg-blue-100 text-blue-800',
-        'bg-green-100 text-green-800',
-        'bg-yellow-100 text-yellow-800',
-        'bg-purple-100 text-purple-800',
-        'bg-gray-100 text-gray-800',
+        'bg-blue-100 text-blue-800',      // Level 0
+        'bg-green-100 text-green-800',    // Level 1
+        'bg-yellow-100 text-yellow-800',  // Level 2
+        'bg-purple-100 text-purple-800',  // Level 3
+        'bg-pink-100 text-pink-800',      // Level 4
+        'bg-indigo-100 text-indigo-800',  // Level 5
+        'bg-orange-100 text-orange-800',  // Level 6
+        'bg-teal-100 text-teal-800',      // Level 7
       ]
       return colors[Math.min(nodeLevel - 1, colors.length - 1)] || colors[colors.length - 1]
     },
