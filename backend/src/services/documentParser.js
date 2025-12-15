@@ -26,6 +26,12 @@ let numberingCounters = {};
 let textToNumberingMap = {};
 
 /**
+ * Active list context for continuation detection
+ * Tracks the most recent list to continue numbering for unmarked paragraphs
+ */
+let activeListContext = null;
+
+/**
  * Parse a Word document and extract paragraphs with style information
  */
 export async function parseDocument(filePath) {
@@ -172,11 +178,22 @@ function extractTextFromXml(xmlContent) {
 
 /**
  * Normalize text for matching between document.xml and mammoth
+ * Handles Unicode special characters that differ between sources
  */
 function normalizeTextForMatching(text) {
   return text
     .trim()
     .toLowerCase()
+    // Remove soft hyphens (U+00AD) - Word uses these for optional line breaks
+    .replace(/\u00AD/g, '')
+    // Replace non-breaking spaces (U+00A0) with regular spaces
+    .replace(/\u00A0/g, ' ')
+    // Replace en-dash (U+2013) and em-dash (U+2014) with regular hyphen
+    .replace(/[\u2013\u2014]/g, '-')
+    // Replace various quote characters with standard ones
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    // Normalize whitespace
     .replace(/\s+/g, ' ')
     .substring(0, 100);
 }
@@ -208,6 +225,7 @@ function resetNumberingCounters() {
 function resetDocumentState() {
   collectedParagraphs = [];
   numberingCounters = {};
+  activeListContext = null;
 }
 
 /**
@@ -296,10 +314,12 @@ function toRoman(num) {
  * Get the list marker for a paragraph using text-based correlation with document.xml
  * This uses the actual numId from the document to track separate list instances
  * @param {string} paragraphText - The text of the paragraph to match
+ * @param {string} styleName - The style name for continuation tracking
+ * @returns {{ marker: string|null, isExplicit: boolean }} - The marker and whether it was from explicit numPr
  */
-function getListMarker(paragraphText) {
+function getListMarker(paragraphText, styleName) {
   if (!paragraphText) {
-    return null;
+    return { marker: null, isExplicit: false };
   }
 
   // Look up numbering info using normalized text
@@ -307,7 +327,7 @@ function getListMarker(paragraphText) {
   const numInfo = textToNumberingMap[textKey];
 
   if (!numInfo) {
-    return null; // No numbering found for this text
+    return { marker: null, isExplicit: false }; // No numbering found for this text
   }
 
   const { numId, ilvl } = numInfo;
@@ -316,19 +336,28 @@ function getListMarker(paragraphText) {
   const abstractNumId = numIdToAbstractNumId[numId];
 
   if (!abstractNumId) {
-    return null; // No abstract definition found
+    return { marker: null, isExplicit: false }; // No abstract definition found
   }
 
   // Get the format definition for this level
   const formatDef = abstractNumFormats[abstractNumId]?.[ilvl];
 
   if (!formatDef) {
-    return null; // No format definition found
+    return { marker: null, isExplicit: false }; // No format definition found
   }
 
   // Handle bullets - no counter needed
   if (formatDef.numFmt === 'bullet') {
-    return '•';
+    // Set active context for bullet continuation
+    activeListContext = {
+      numId,
+      ilvl,
+      abstractNumId,
+      formatDef,
+      styleName,
+      isBullet: true,
+    };
+    return { marker: '•', isExplicit: true };
   }
 
   // Track counter per numId-level combination (each list instance has its own counter)
@@ -346,6 +375,61 @@ function getListMarker(paragraphText) {
 
   // Apply the lvlText format (e.g., "%1." or "%1)" or "(%1)")
   // Replace %1, %2, etc. with the actual formatted number
+  let marker = formatDef.lvlText;
+  marker = marker.replace(/%\d+/g, formattedNum);
+
+  // Set active context for numbered list continuation
+  activeListContext = {
+    numId,
+    ilvl,
+    abstractNumId,
+    formatDef,
+    counterKey,
+    styleName,
+    isBullet: false,
+  };
+
+  return { marker, isExplicit: true };
+}
+
+/**
+ * Get a continuation marker for paragraphs that follow a list item
+ * but don't have their own numPr in document.xml
+ * @param {string} styleName - The style name of the current paragraph
+ * @returns {string|null} - The continuation marker or null
+ */
+function getContinuationMarker(styleName) {
+  if (!activeListContext) {
+    return null;
+  }
+
+  // Check if this paragraph could be a list continuation
+  // It should have the same style as the list items
+  const styleMatch = activeListContext.styleName &&
+    styleName.toLowerCase() === activeListContext.styleName.toLowerCase();
+
+  if (!styleMatch) {
+    return null;
+  }
+
+  // For bullets, return bullet marker
+  if (activeListContext.isBullet) {
+    return '•';
+  }
+
+  // For numbered lists, increment and return next number
+  const { counterKey, formatDef } = activeListContext;
+
+  if (!counterKey || !formatDef) {
+    return null;
+  }
+
+  // Increment counter for continuation
+  numberingCounters[counterKey]++;
+
+  const currentNum = numberingCounters[counterKey];
+  const formattedNum = formatNumber(currentNum, formatDef.numFmt);
+
   let marker = formatDef.lvlText;
   marker = marker.replace(/%\d+/g, formattedNum);
 
@@ -396,15 +480,46 @@ function transformElement(element) {
   if (element.type === 'paragraph') {
     const styleName = element.styleName || 'Normal';
 
+    // Check if this style should break list continuation
+    if (shouldResetNumberingCounter(element, styleName)) {
+      activeListContext = null;
+    }
+
     // Get the raw text first (needed for numbering lookup)
     const rawText = extractTextFromElement(element);
 
     // Get list marker using text-based correlation with document.xml
-    let listMarker = getListMarker(rawText);
+    let { marker: listMarker, isExplicit } = getListMarker(rawText, styleName);
+
+    // If no explicit marker, try continuation detection
+    if (!listMarker && activeListContext) {
+      listMarker = getContinuationMarker(styleName);
+    }
 
     // Fallback to style-based bullet detection
     if (!listMarker) {
       listMarker = getStyleBasedListMarker(styleName);
+      if (listMarker) {
+        // Set active context for style-based bullets too
+        activeListContext = {
+          styleName,
+          isBullet: true,
+        };
+      }
+    }
+
+    // If we have a marker but it's not explicit and not a continuation match, clear context
+    // This prevents unrelated paragraphs from inheriting markers
+    if (!listMarker && !isExplicit) {
+      // Check if this paragraph breaks the list (different style, heading, etc.)
+      const styleNameLower = styleName.toLowerCase();
+      if (styleNameLower.includes('rubrik') ||
+          styleNameLower.includes('heading') ||
+          styleNameLower.includes('normal') ||
+          styleNameLower === 'spalttext' ||
+          styleNameLower === 'kommentar') {
+        activeListContext = null;
+      }
     }
 
     // Prepend list marker to text if applicable
@@ -527,15 +642,40 @@ function processElement(element, paragraphs, tables, depth) {
   if (element.type === 'paragraph') {
     const styleName = element.styleName || 'Normal';
 
+    // Check if this style should break list continuation
+    if (shouldResetNumberingCounter(element, styleName)) {
+      activeListContext = null;
+    }
+
     // Get the raw text first (needed for numbering lookup)
     const rawText = extractTextFromElement(element);
 
     // Get list marker using text-based correlation with document.xml
-    let listMarker = getListMarker(rawText);
+    let { marker: listMarker, isExplicit } = getListMarker(rawText, styleName);
+
+    // If no explicit marker, try continuation detection
+    if (!listMarker && activeListContext) {
+      listMarker = getContinuationMarker(styleName);
+    }
 
     // Fallback to style-based bullet detection
     if (!listMarker) {
       listMarker = getStyleBasedListMarker(styleName);
+      if (listMarker) {
+        activeListContext = { styleName, isBullet: true };
+      }
+    }
+
+    // Clear context for non-list paragraphs
+    if (!listMarker && !isExplicit) {
+      const styleNameLower = styleName.toLowerCase();
+      if (styleNameLower.includes('rubrik') ||
+          styleNameLower.includes('heading') ||
+          styleNameLower.includes('normal') ||
+          styleNameLower === 'spalttext' ||
+          styleNameLower === 'kommentar') {
+        activeListContext = null;
+      }
     }
 
     // Prepend list marker to text if applicable

@@ -5,6 +5,7 @@ import { testConnection } from './config/database.js';
 import { testQdrantConnection, ensurePayloadIndexes } from './config/qdrant.js';
 import { getCollectionStats } from './services/vectorStore.js';
 import { getEmbeddingInfo } from './services/embeddings.js';
+import { i18next, i18nextMiddleware } from './config/i18n.js';
 
 import documentsRoutes from './routes/documents.js';
 import chunksRoutes from './routes/chunks.js';
@@ -24,6 +25,7 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
+app.use(i18nextMiddleware.handle(i18next));
 
 // Trust proxy (for Railway/Render behind load balancer)
 if (config.nodeEnv === 'production') {

@@ -128,6 +128,45 @@ const K2_AVSNITT_TITLES = [
 ];
 
 /**
+ * K2 Punkt number mapping by Rubrik 4 title
+ * Maps Rubrik 4 section titles to their official BFN punkt numbers
+ * Only sections with "Allmänt råd" that have official punkt numbers are included
+ *
+ * Pattern: Sections without "lagtext" before "allmänt råd" typically get numbered punkts
+ * The numbering is official BFN numbering, extracted from cross-references in the document
+ */
+const K2_PUNKT_MAPPING = {
+  // Chapter 2 - Redovisningsprinciper
+  'Fortlevnadsprincipen': '2.2',
+  'Konsekvent tillämpning': '2.3',
+  // 2.4, 2.4A, 2.4B, 2.5 are in "Avvikelse från årsredovisningslagens grundläggande redovisningsprinciper"
+  'En eller flera transaktioner': '2.6',
+  // 2.7 was revoked (Har upphävts)
+  'Byten': '2.8',
+  'Schablonmässig värdering': '2.9',
+  'Omräkning av gränsvärden när företaget har redovisningsvaluta i euro': '2.10',
+  'Händelser efter balansdagen': '2.11',
+  'Rättelse av fel': '2.12',
+
+  // Additional mappings can be added for other chapters as needed
+  // Chapter 6 - Rörelseintäkter
+  // Chapter 10 - Immateriella och materiella anläggningstillgångar
+  // etc.
+};
+
+/**
+ * K2 Punkt sub-numbering tracking
+ * Some Rubrik 4 sections have multiple "Allmänt råd" markers (e.g., 2.11 and 2.11A)
+ * This tracks how many "Allmänt råd" sections we've seen under each Rubrik 4
+ */
+function getNextPunktSubNumber(basePunkt, subIndex) {
+  if (subIndex === 0) return basePunkt;
+  // For subsequent "Allmänt råd" sections under the same Rubrik 4, add letter suffix
+  const letter = String.fromCharCode(65 + subIndex - 1); // A, B, C, ...
+  return `${basePunkt}${letter}`;
+}
+
+/**
  * Main function to chunk a document based on number-based hierarchy
  * Uses chapter numbers and "allmänt råd" point numbering
  * Returns both chunks and the hierarchy structure
@@ -272,10 +311,16 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
   let currentChapterNumber = 0;
   let currentAvsnittNumber = 0;
 
+  // Punkt numbering based on K2 mapping (official BFN punkt numbers)
+  let currentRubrik4Title = null; // Current Rubrik 4 section title
+  let currentRubrik4BasePunkt = null; // Base punkt number from K2_PUNKT_MAPPING (e.g., "2.9")
+  let currentRubrik4AllmantRadCount = 0; // Count of "Allmänt råd" sections under current Rubrik 4
+  let currentMappedPunkt = null; // Current punkt number with sub-numbering (e.g., "2.11A")
+
   // Content tracking
   let currentContentType = null;
   let currentAllmantRadGroup = null;
-  let lastExplicitPunkt = null;
+  let lastExplicitPunkt = null; // Explicit punkt from Rubrik 5 headings
 
   /**
    * Find the appropriate parent for a new node at the given level
@@ -369,25 +414,40 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
                          K3_CHAPTER_TITLE_TO_NUMBER[text] ||
                          ++currentChapterNumber;
 
+      // Reset Rubrik 4 tracking for new chapter
+      currentRubrik4Title = null;
+      currentRubrik4BasePunkt = null;
+      currentRubrik4AllmantRadCount = 0;
+      currentMappedPunkt = null;
+
       addNode({
         level: 3,
         text: text,
         style: style,
         paragraphIndex: para.index,
         nodeType: 'kapitel',
+        chapterNumber: chapterNum,
         chapterTitle: `Kapitel ${chapterNum} – ${text}`,
       });
       continue;
     }
 
     // Level 4: Subsection (Rubrik 4)
+    // In K2 documents, some Rubrik 4 sections have official punkt numbers from K2_PUNKT_MAPPING
     if (SUBSECTION_STYLES.some(s => style === s)) {
+      // Update current Rubrik 4 tracking
+      currentRubrik4Title = text;
+      currentRubrik4BasePunkt = K2_PUNKT_MAPPING[text] || null;
+      currentRubrik4AllmantRadCount = 0; // Reset count for new Rubrik 4
+      currentMappedPunkt = null;
+
       addNode({
         level: 4,
         text: text,
         style: style,
         paragraphIndex: para.index,
         nodeType: 'subsection',
+        punktNumber: currentRubrik4BasePunkt, // Official punkt number if mapped
       });
       continue;
     }
@@ -427,9 +487,32 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       const lowerText = text.toLowerCase();
       if (lowerText === 'allmänt råd') {
         currentContentType = 'allmänt råd';
+
+        // Look ahead to check if this is a revoked section ("Har upphävts")
+        // Revoked sections should not get punkt numbers
+        const nextParaIndex = paragraphs.findIndex((p, idx) => idx > paragraphs.indexOf(para) && p.text.trim());
+        const nextPara = nextParaIndex >= 0 ? paragraphs[nextParaIndex] : null;
+        const isRevokedSection = nextPara && nextPara.text.trim().toLowerCase().startsWith('har upphävts');
+
+        // Calculate punkt number with sub-numbering
+        // Priority: explicit Rubrik 5 > mapped Rubrik 4 with sub-number
+        // Skip punkt numbering for revoked sections
+        if (isRevokedSection) {
+          currentMappedPunkt = null; // No punkt number for revoked sections
+        } else if (lastExplicitPunkt) {
+          currentMappedPunkt = lastExplicitPunkt;
+        } else if (currentRubrik4BasePunkt) {
+          // Generate sub-number for multiple "Allmänt råd" under same Rubrik 4
+          currentMappedPunkt = getNextPunktSubNumber(currentRubrik4BasePunkt, currentRubrik4AllmantRadCount);
+          currentRubrik4AllmantRadCount++;
+        } else {
+          currentMappedPunkt = null; // No punkt number for this section
+        }
+
         currentAllmantRadGroup = {
-          punktNumber: lastExplicitPunkt,
+          punktNumber: currentMappedPunkt,
           startedAt: para.index,
+          punktAssigned: false, // Track if we've assigned the punkt number to a paragraph
         };
       } else if (lowerText === 'kommentar') {
         currentContentType = 'kommentar';
@@ -447,6 +530,7 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
         paragraphIndex: para.index,
         nodeType: 'contentMarker',
         contentType: currentContentType,
+        punktNumber: currentContentType === 'allmänt råd' ? currentMappedPunkt : null,
       });
       continue;
     }
@@ -460,9 +544,12 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
     if (isAllmantRadBody && !effectiveContentType) {
       effectiveContentType = 'allmänt råd';
       if (!currentAllmantRadGroup) {
+        // Use punkt number from: explicit Rubrik 5 > mapped Rubrik 4
+        const effectivePunkt = lastExplicitPunkt || currentMappedPunkt;
         currentAllmantRadGroup = {
-          punktNumber: lastExplicitPunkt,
+          punktNumber: effectivePunkt,
           startedAt: para.index,
+          punktAssigned: false,
         };
       }
     } else if (isKommentarBody && !effectiveContentType) {
@@ -471,14 +558,28 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       effectiveContentType = 'lagtext';
     }
 
-    const currentPunktNumber = currentAllmantRadGroup?.punktNumber || lastExplicitPunkt;
+    // Determine if this paragraph should show the punkt number
+    // Only the FIRST non-list paragraph in an "Allmänt råd" group gets the punkt number
+    let paragraphPunktNumber = null;
+    if (effectiveContentType === 'allmänt råd' && currentAllmantRadGroup?.punktNumber) {
+      // Only assign punkt number if:
+      // 1. This paragraph doesn't have a list marker (not a, b, c items)
+      // 2. We haven't already assigned the punkt number to a paragraph in this group
+      if (!para.hasListMarker && !currentAllmantRadGroup.punktAssigned) {
+        paragraphPunktNumber = currentAllmantRadGroup.punktNumber;
+        currentAllmantRadGroup.punktAssigned = true;
+      }
+    }
+
+    // Get the associated group punkt for kommentar paragraphs
+    const currentPunktNumber = currentAllmantRadGroup?.punktNumber || lastExplicitPunkt || currentMappedPunkt;
 
     addParagraph({
       index: para.index,
       text: text,
       style: style,
       contentType: effectiveContentType,
-      pointNumber: effectiveContentType === 'allmänt råd' ? currentPunktNumber : null,
+      pointNumber: paragraphPunktNumber,
       associatedGroup: effectiveContentType === 'kommentar' ? currentPunktNumber : null,
       listMarker: para.listMarker || null,
       hasListMarker: para.hasListMarker || false,

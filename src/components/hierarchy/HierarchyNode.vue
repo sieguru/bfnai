@@ -33,10 +33,7 @@
         <!-- Node title -->
         <div class="flex-1 min-w-0">
           <div class="font-medium text-gray-900 truncate">{{ node.text || '(Untitled)' }}</div>
-          <div class="flex items-center gap-2 mt-0.5">
-            <span v-if="node.style" class="text-xs text-gray-400 font-mono" :title="node.style">{{ truncateStyle(node.style) }}</span>
-            <span v-if="node.chapterTitle" class="text-xs text-gray-500">{{ node.chapterTitle }}</span>
-          </div>
+          <div v-if="node.chapterTitle" class="text-xs text-gray-500 mt-0.5">{{ node.chapterTitle }}</div>
         </div>
 
         <!-- Stats -->
@@ -60,14 +57,19 @@
         :level="level + 1"
         :expanded-nodes="expandedNodes"
         :parent-id="nodeId"
+        :node-index="index"
         @toggle="$emit('toggle', $event)"
         @select-paragraph="$emit('select-paragraph', $event)"
         @select-node="$emit('select-node', $event)"
       />
     </div>
 
-    <!-- Paragraphs (when expanded) -->
-    <div v-if="isExpanded && node.paragraphs && node.paragraphs.length > 0" class="ml-8 mt-2 space-y-1">
+    <!-- Paragraphs (when expanded) - indented to level 6 -->
+    <div
+      v-if="isExpanded && node.paragraphs && node.paragraphs.length > 0"
+      class="mt-2 space-y-1"
+      :style="{ paddingLeft: '9rem' }"
+    >
       <div
         v-for="(para, index) in displayedParagraphs"
         :key="index"
@@ -76,27 +78,18 @@
       >
         <div class="flex items-start gap-2">
           <span
+            v-if="para.pointNumber"
+            class="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-blue-100 text-blue-800 font-mono font-semibold"
+            :title="'Punkt ' + para.pointNumber"
+          >
+            {{ para.pointNumber }}
+          </span>
+          <span
             v-if="para.listMarker"
             class="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-amber-100 text-amber-800 font-mono font-semibold"
             :title="'List marker: ' + para.listMarker"
           >
             {{ para.listMarker }}
-          </span>
-          <span
-            v-if="para.contentType"
-            :class="[
-              'px-1.5 py-0.5 text-xs rounded flex-shrink-0',
-              contentTypeClass(para.contentType)
-            ]"
-          >
-            {{ para.contentType }}
-          </span>
-          <span
-            v-if="para.style"
-            class="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-slate-100 text-slate-600 font-mono"
-            :title="para.style"
-          >
-            {{ truncateStyle(para.style) }}
           </span>
           <span class="text-gray-700 line-clamp-2">{{ stripListMarker(para) }}</span>
         </div>
@@ -139,7 +132,11 @@ export default {
     },
     parentId: {
       type: String,
-      default: '0',
+      default: 'root',
+    },
+    nodeIndex: {
+      type: Number,
+      default: 0,
     },
   },
   emits: ['toggle', 'select-paragraph', 'select-node'],
@@ -151,9 +148,7 @@ export default {
   },
   computed: {
     nodeId() {
-      // Get our index from parent's children array
-      const index = this.$parent?.node?.children?.indexOf(this.node) ?? 0
-      return `${this.parentId}-${index}`
+      return `${this.parentId}-${this.nodeIndex}`
     },
     isExpanded() {
       return this.expandedNodes.has(this.nodeId)
@@ -197,25 +192,6 @@ export default {
     },
     selectNode() {
       this.$emit('select-node', this.node)
-    },
-    contentTypeClass(type) {
-      const classes = {
-        'allmänt råd': 'bg-blue-100 text-blue-700',
-        'kommentar': 'bg-green-100 text-green-700',
-        'lagtext': 'bg-yellow-100 text-yellow-700',
-      }
-      return classes[type?.toLowerCase()] || 'bg-gray-100 text-gray-700'
-    },
-    truncateStyle(style) {
-      // Shorten common Swedish style name patterns for display
-      if (!style) return ''
-      // Remove " indrag" suffix for brevity
-      let short = style.replace(/ indrag$/, '')
-      // Truncate if still too long
-      if (short.length > 20) {
-        return short.substring(0, 18) + '…'
-      }
-      return short
     },
     stripListMarker(para) {
       // Remove the list marker prefix from text since it's shown as a badge

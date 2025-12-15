@@ -75,6 +75,8 @@
               :node="node"
               :level="0"
               :expanded-nodes="expandedNodes"
+              :parent-id="'root'"
+              :node-index="index"
               @toggle="toggleNode"
               @select-paragraph="selectParagraph"
               @select-node="selectNode"
@@ -103,6 +105,14 @@
           </div>
           <div v-if="selectedParagraph.contentType" class="mb-2 text-sm text-gray-500">
             <span class="font-medium">{{ $t('hierarchy.contentType') }}:</span> {{ selectedParagraph.contentType }}
+          </div>
+          <div v-if="selectedParagraph.pointNumber" class="mb-2 text-sm text-gray-500">
+            <span class="font-medium">Punkt:</span>
+            <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 font-mono font-semibold rounded">{{ selectedParagraph.pointNumber }}</span>
+          </div>
+          <div v-if="selectedParagraph.listMarker" class="mb-2 text-sm text-gray-500">
+            <span class="font-medium">List marker:</span>
+            <span class="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 font-mono font-semibold rounded">{{ selectedParagraph.listMarker }}</span>
           </div>
           <div class="prose prose-sm max-w-none">
             {{ selectedParagraph.text }}
@@ -205,7 +215,7 @@ export default {
         // Auto-expand first level
         if (this.hierarchy?.children) {
           this.hierarchy.children.forEach((_, index) => {
-            this.expandedNodes.add(`0-${index}`)
+            this.expandedNodes.add(`root-${index}`)
           })
         }
       } catch (error) {
@@ -224,7 +234,7 @@ export default {
       this.expandedNodes = new Set(this.expandedNodes)
     },
     expandAll() {
-      const collectNodeIds = (nodes, prefix = '0') => {
+      const collectNodeIds = (nodes, prefix = 'root') => {
         nodes.forEach((node, index) => {
           const nodeId = `${prefix}-${index}`
           this.expandedNodes.add(nodeId)

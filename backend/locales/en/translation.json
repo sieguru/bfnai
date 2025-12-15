@@ -1,0 +1,47 @@
+{
+  "common": {
+    "success": "Success",
+    "error": "Error",
+    "notFound": "Not found",
+    "internalError": "Internal server error",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update"
+  },
+  "health": {
+    "healthy": "Healthy",
+    "partial": "Partial",
+    "error": "Error",
+    "connected": "Connected",
+    "disconnected": "Disconnected"
+  },
+  "documents": {
+    "notFound": "Document not found",
+    "uploadSuccess": "Document uploaded successfully",
+    "uploadFailed": "Failed to upload document",
+    "processSuccess": "Document processed successfully",
+    "processFailed": "Failed to process document",
+    "deleteSuccess": "Document deleted successfully",
+    "deleteFailed": "Failed to delete document",
+    "noFile": "No file uploaded",
+    "invalidType": "Invalid file type. Only .docx files are allowed"
+  },
+  "chunks": {
+    "notFound": "Chunk not found",
+    "noChunks": "No chunks found for this document"
+  },
+  "search": {
+    "noResults": "No results found",
+    "queryRequired": "Search query is required",
+    "invalidLimit": "Invalid limit parameter"
+  },
+  "agent": {
+    "messageRequired": "Message is required",
+    "conversationNotFound": "Conversation not found",
+    "processingError": "Error processing your request"
+  }
+}

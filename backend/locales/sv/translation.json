@@ -1,0 +1,47 @@
+{
+  "common": {
+    "success": "Lyckades",
+    "error": "Fel",
+    "notFound": "Hittades inte",
+    "internalError": "Internt serverfel",
+    "loading": "Laddar...",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "delete": "Ta bort",
+    "edit": "Redigera",
+    "create": "Skapa",
+    "update": "Uppdatera"
+  },
+  "health": {
+    "healthy": "Frisk",
+    "partial": "Delvis",
+    "error": "Fel",
+    "connected": "Ansluten",
+    "disconnected": "Frånkopplad"
+  },
+  "documents": {
+    "notFound": "Dokumentet hittades inte",
+    "uploadSuccess": "Dokumentet laddades upp",
+    "uploadFailed": "Kunde inte ladda upp dokumentet",
+    "processSuccess": "Dokumentet bearbetades",
+    "processFailed": "Kunde inte bearbeta dokumentet",
+    "deleteSuccess": "Dokumentet raderades",
+    "deleteFailed": "Kunde inte radera dokumentet",
+    "noFile": "Ingen fil uppladdad",
+    "invalidType": "Ogiltig filtyp. Endast .docx-filer är tillåtna"
+  },
+  "chunks": {
+    "notFound": "Chunken hittades inte",
+    "noChunks": "Inga chunks hittades för detta dokument"
+  },
+  "search": {
+    "noResults": "Inga resultat hittades",
+    "queryRequired": "Sökfråga krävs",
+    "invalidLimit": "Ogiltig limit-parameter"
+  },
+  "agent": {
+    "messageRequired": "Meddelande krävs",
+    "conversationNotFound": "Konversationen hittades inte",
+    "processingError": "Fel vid bearbetning av din förfrågan"
+  }
+}
