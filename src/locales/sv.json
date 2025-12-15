@@ -188,7 +188,13 @@
     "expandAll": "Expandera alla",
     "collapseAll": "Fäll ihop alla",
     "paragraphDetail": "Styckedetalj",
+    "nodeDetail": "Avsnittsdetalj",
     "style": "Stil",
-    "contentType": "Innehållstyp"
+    "contentType": "Innehållstyp",
+    "level": "Nivå",
+    "chapter": "Kapitel",
+    "chapterTitle": "Kapitelrubrik",
+    "childSections": "Underavsnitt",
+    "paragraphCount": "Stycken"
   }
 }

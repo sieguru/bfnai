@@ -28,7 +28,9 @@ This document describes the structure of Swedish BFN (Bokföringsnämnden) K2 ac
 
 ## Document Hierarchy
 
-### Level 0: Document Parts (Rubrik 1)
+### Level 0: Common root (does not exist in document, but used in parsing as a top level container object)
+
+### Level 1: Document Parts (Rubrik 1)
 
 Major document divisions.
 
@@ -36,7 +38,7 @@ Major document divisions.
 |------------|--------------|
 | `Rubrik 1 indrag` | "Lagregler, allmänna råd (BFNAR 2016:10) och kommentarer" |
 
-### Level 1: Avsnitt - Sections (Rubrik 2)
+### Level 2: Avsnitt - Sections (Rubrik 2)
 
 The document is divided into 9 main sections (Avsnitt I–IX).
 
@@ -55,7 +57,7 @@ The document is divided into 9 main sections (Avsnitt I–IX).
 - Avsnitt VIII – Särskilda regler vid byte till detta allmänna råd
 - Avsnitt IX – Frivilligt upprättad kassaflödesanalys
 
-### Level 2: Kapitel - Chapters (Rubrik 3)
+### Level 3: Kapitel - Chapters (Rubrik 3)
 
 Chapters within each Avsnitt, numbered 1-21.
 
@@ -86,7 +88,7 @@ Chapters within each Avsnitt, numbered 1-21.
 20. Särskilda regler vid byte till detta allmänna råd
 21. Frivilligt upprättad kassaflödesanalys
 
-### Level 3: Subsections (Rubrik 4)
+### Level 4: Subsections (Rubrik 4)
 
 Topic subdivisions within chapters.
 
@@ -94,7 +96,7 @@ Topic subdivisions within chapters.
 |------------|--------------|
 | `Rubrik 4 indrag` | "Vilka företag får tillämpa detta allmänna råd", "Definitioner och förklaringar" |
 
-### Level 4: Punkt References (Rubrik 5)
+### Level 5: Punkt References (Rubrik 5)
 
 Explicit references to punkt numbers - **unique to K2**.
 
@@ -102,7 +104,7 @@ Explicit references to punkt numbers - **unique to K2**.
 |------------|--------------|
 | `Rubrik 5 indrag` | "Punkt 1.1A", "Punkt 1.1B", "Punkt 1.1C", "Punkt 2.4A" |
 
-### Level 5: Term Definitions (Rubrik 6)
+### Level 6: Term Definitions (Rubrik 6)
 
 Specific terms within sections.
 
@@ -114,7 +116,7 @@ Specific terms within sections.
 
 ## Content Types
 
-Each section is preceeded by a section title and contains three primary content types, marked by `Spalttext`:
+Each content section is preceeded by a section title and contains three primary content types, marked by `Spalttext`:
 
 ### 1. Allmänt råd group (General Advices)
 

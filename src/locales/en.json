@@ -188,7 +188,13 @@
     "expandAll": "Expand All",
     "collapseAll": "Collapse All",
     "paragraphDetail": "Paragraph Detail",
+    "nodeDetail": "Section Detail",
     "style": "Style",
-    "contentType": "Content Type"
+    "contentType": "Content Type",
+    "level": "Level",
+    "chapter": "Chapter",
+    "chapterTitle": "Chapter Title",
+    "childSections": "Child Sections",
+    "paragraphCount": "Paragraphs"
   }
 }

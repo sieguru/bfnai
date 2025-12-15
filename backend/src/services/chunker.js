@@ -240,12 +240,13 @@ const IGNORE_STYLES = [
  * Supports both K2 and K3 document structures
  *
  * K2 Document Hierarchy (6 levels):
- * - Level 0: Document Parts (Rubrik 1 indrag) - "Lagregler, allmänna råd..."
- * - Level 1: Avsnitt/Sections (Rubrik 2 indrag) - 9 sections (Avsnitt I-IX)
- * - Level 2: Kapitel/Chapters (Rubrik 3 indrag) - 21 chapters
- * - Level 3: Subsections (Rubrik 4 indrag)
- * - Level 4: Punkt References (Rubrik 5 indrag) - "Punkt 1.1A"
- * - Level 5: Term Definitions (Rubrik 6 indrag) - "Nettoomsättning"
+ * - Level 0: Document Root"
+ * - Level 1: Document Parts (Rubrik 1 indrag) - "Lagregler, allmänna råd..."
+ * - Level 2: Avsnitt/Sections (Rubrik 2 indrag) - 9 sections (Avsnitt I-IX)
+ * - Level 3: Kapitel/Chapters (Rubrik 3 indrag) - 21 chapters
+ * - Level 4: Subsections (Rubrik 4 indrag)
+ * - Level 5: Punkt References (Rubrik 5 indrag) - "Punkt 1.1A"
+ * - Level 6: Term Definitions (Rubrik 6 indrag) - "Nettoomsättning"
  *
  * Key rules (from BFN K2 document structure):
  * - Punkt numbers come ONLY from explicit Rubrik 5 headings (e.g., "Punkt 1.1A")
@@ -293,7 +294,7 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
     // Level 0: Document Parts (Rubrik 1) - Major divisions
     if (DOCUMENT_PART_STYLES.some(s => style === s)) {
       currentDocumentPart = {
-        level: 0,
+        level: 1,
         text: text,
         style: style,
         paragraphIndex: para.index,
@@ -319,7 +320,7 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
     if (AVSNITT_STYLES.some(s => style === s)) {
       currentAvsnittNumber++;
       currentAvsnitt = {
-        level: 1,
+        level: 2,
         text: text,
         style: style,
         paragraphIndex: para.index,
@@ -354,14 +355,14 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
                          ++currentChapterNumber;
 
       currentKapitel = {
-        level: 2,
+        level: 3,
         text: text,
         style: style,
         paragraphIndex: para.index,
         children: [],
         paragraphs: [],
         nodeType: 'kapitel',
-        chapterNumber: chapterNum,
+        //chapterNumber: chapterNum,
         chapterTitle: `Kapitel ${chapterNum} – ${text}`,
       };
 
@@ -385,7 +386,7 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
     // Level 3: Subsection (Rubrik 4)
     if (SUBSECTION_STYLES.some(s => style === s)) {
       currentSubsection = {
-        level: 3,
+        level: 4,
         text: text,
         style: style,
         paragraphIndex: para.index,
@@ -419,7 +420,7 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       }
 
       currentPunktRef = {
-        level: 4,
+        level: 5,
         text: text,
         style: style,
         paragraphIndex: para.index,
@@ -449,7 +450,7 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
     // Level 5: Term Definition (Rubrik 6) - Specific terms like "Nettoomsättning"
     if (TERM_DEFINITION_STYLES.some(s => style === s)) {
       currentTermDef = {
-        level: 5,
+        level: 6,
         text: text,
         style: style,
         paragraphIndex: para.index,
@@ -493,6 +494,32 @@ export async function buildNumberBasedHierarchy(paragraphs, styleMapping = {}) {
       } else {
         currentContentType = text; // Other markers
       }
+
+      // Save the marker as a level 6 header
+      currentTermDef = {
+        level: 6,
+        text: text,
+        style: style,
+        paragraphIndex: para.index,
+        children: [],
+        paragraphs: [],
+        nodeType: 'termDefinition',
+      };
+
+      if (currentPunktRef) {
+        currentPunktRef.children.push(currentTermDef);
+      } else if (currentSubsection) {
+        currentSubsection.children.push(currentTermDef);
+      } else if (currentKapitel) {
+        currentKapitel.children.push(currentTermDef);
+      } else if (currentAvsnitt) {
+        currentAvsnitt.children.push(currentTermDef);
+      } else if (currentDocumentPart) {
+        currentDocumentPart.children.push(currentTermDef);
+      } else {
+        root.children.push(currentTermDef);
+      }
+      currentContentType = null;
       continue;
     }
 

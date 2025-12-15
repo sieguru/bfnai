@@ -77,6 +77,7 @@
               :expanded-nodes="expandedNodes"
               @toggle="toggleNode"
               @select-paragraph="selectParagraph"
+              @select-node="selectNode"
             />
           </div>
         </template>
@@ -109,6 +110,43 @@
         </div>
       </div>
     </div>
+
+    <!-- Node detail modal -->
+    <div
+      v-if="selectedNode"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      @click.self="selectedNode = null"
+    >
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+        <div class="p-4 border-b flex items-center justify-between">
+          <h3 class="font-semibold">{{ $t('hierarchy.nodeDetail') }}</h3>
+          <button @click="selectedNode = null" class="text-gray-500 hover:text-gray-700">
+            <font-awesome-icon icon="times" />
+          </button>
+        </div>
+        <div class="p-4 overflow-y-auto max-h-[60vh]">
+          <div class="mb-2 text-sm text-gray-500">
+            <span class="font-medium">{{ $t('hierarchy.style') }}:</span> {{ selectedNode.style }}
+          </div>
+          <div v-if="selectedNode.level" class="mb-2 text-sm text-gray-500">
+            <span class="font-medium">{{ $t('hierarchy.level') }}:</span> {{ selectedNode.level }}
+          </div>
+          <div v-if="selectedNode.chapterNumber" class="mb-2 text-sm text-gray-500">
+            <span class="font-medium">{{ $t('hierarchy.chapter') }}:</span> {{ selectedNode.chapterNumber }}
+          </div>
+          <div v-if="selectedNode.chapterTitle" class="mb-2 text-sm text-gray-500">
+            <span class="font-medium">{{ $t('hierarchy.chapterTitle') }}:</span> {{ selectedNode.chapterTitle }}
+          </div>
+          <div class="mb-4 text-sm text-gray-500">
+            <span class="font-medium">{{ $t('hierarchy.childSections') }}:</span> {{ selectedNode.children?.length || 0 }}
+            <span class="ml-4 font-medium">{{ $t('hierarchy.paragraphCount') }}:</span> {{ selectedNode.paragraphs?.length || 0 }}
+          </div>
+          <div class="prose prose-sm max-w-none border-t pt-4">
+            <p class="font-medium text-gray-900">{{ selectedNode.text || '(Untitled)' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -131,6 +169,7 @@ export default {
       documentName: '',
       expandedNodes: new Set(),
       selectedParagraph: null,
+      selectedNode: null,
     }
   },
   async mounted() {
@@ -204,6 +243,9 @@ export default {
     },
     selectParagraph(paragraph) {
       this.selectedParagraph = paragraph
+    },
+    selectNode(node) {
+      this.selectedNode = node
     },
   },
 }

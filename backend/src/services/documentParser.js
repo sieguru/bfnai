@@ -5,10 +5,25 @@ import JSZip from 'jszip';
 
 /**
  * Numbering format definitions extracted from numbering.xml
- * Maps paragraph style IDs to their format configuration
+ * Maps abstractNumId to level format configurations
  */
-let numberingFormats = {};
+let abstractNumFormats = {};
+
+/**
+ * Maps numId to abstractNumId (from numbering.xml)
+ */
+let numIdToAbstractNumId = {};
+
+/**
+ * Counters for each numId-level combination
+ */
 let numberingCounters = {};
+
+/**
+ * Map of paragraph text hash to numPr info for text-based correlation
+ * Key: first 100 chars of paragraph text, Value: { numId, ilvl }
+ */
+let textToNumberingMap = {};
 
 /**
  * Parse a Word document and extract paragraphs with style information
@@ -51,62 +66,119 @@ export async function parseDocument(filePath) {
 }
 
 /**
- * Extract numbering definitions from the docx file's numbering.xml
- * This contains the actual format definitions (e.g., "a)", "1.", etc.)
+ * Extract numbering definitions from the docx file's numbering.xml and document.xml
+ * This extracts:
+ * 1. abstractNum definitions (format templates)
+ * 2. num definitions (numId -> abstractNumId mappings)
+ * 3. Text-to-numId mapping for correlating with mammoth paragraphs
  */
 async function extractNumberingDefinitions(buffer) {
-  numberingFormats = {};
+  abstractNumFormats = {};
+  numIdToAbstractNumId = {};
   numberingCounters = {};
+  textToNumberingMap = {};
 
   try {
     const zip = await JSZip.loadAsync(buffer);
     const numberingXml = await zip.file('word/numbering.xml')?.async('string');
+    const documentXml = await zip.file('word/document.xml')?.async('string');
 
-    if (!numberingXml) {
-      return; // No numbering definitions
-    }
+    if (numberingXml) {
+      // 1. Parse abstractNum definitions (format templates)
+      const abstractNumRegex = /<w:abstractNum[^>]*w:abstractNumId="(\d+)"[^>]*>([\s\S]*?)<\/w:abstractNum>/g;
+      let match;
 
-    // Parse abstractNum definitions to extract format info
-    // Format: <w:abstractNum w:abstractNumId="X">...<w:lvl w:ilvl="Y">...<w:pStyle w:val="StyleName"/>...
-    const abstractNumRegex = /<w:abstractNum[^>]*w:abstractNumId="(\d+)"[^>]*>([\s\S]*?)<\/w:abstractNum>/g;
-    let match;
+      while ((match = abstractNumRegex.exec(numberingXml)) !== null) {
+        const abstractNumId = match[1];
+        const content = match[2];
+        abstractNumFormats[abstractNumId] = {};
 
-    while ((match = abstractNumRegex.exec(numberingXml)) !== null) {
-      const abstractNumId = match[1];
-      const content = match[2];
+        // Extract each level definition
+        const lvlRegex = /<w:lvl[^>]*w:ilvl="(\d+)"[^>]*>([\s\S]*?)<\/w:lvl>/g;
+        let lvlMatch;
 
-      // Extract each level definition
-      const lvlRegex = /<w:lvl[^>]*w:ilvl="(\d+)"[^>]*>([\s\S]*?)<\/w:lvl>/g;
-      let lvlMatch;
+        while ((lvlMatch = lvlRegex.exec(content)) !== null) {
+          const level = parseInt(lvlMatch[1], 10);
+          const lvlContent = lvlMatch[2];
 
-      while ((lvlMatch = lvlRegex.exec(content)) !== null) {
-        const level = parseInt(lvlMatch[1], 10);
-        const lvlContent = lvlMatch[2];
+          // Extract numFmt (decimal, lowerLetter, bullet, etc.)
+          const numFmtMatch = lvlContent.match(/<w:numFmt[^>]*w:val="([^"]+)"/);
+          // Extract lvlText (the actual format like "%1." or "%1)")
+          const lvlTextMatch = lvlContent.match(/<w:lvlText[^>]*w:val="([^"]*)"/);
+          // Extract start value
+          const startMatch = lvlContent.match(/<w:start[^>]*w:val="(\d+)"/);
 
-        // Extract pStyle (paragraph style this applies to)
-        const pStyleMatch = lvlContent.match(/<w:pStyle[^>]*w:val="([^"]+)"/);
-        // Extract numFmt (decimal, lowerLetter, bullet, etc.)
-        const numFmtMatch = lvlContent.match(/<w:numFmt[^>]*w:val="([^"]+)"/);
-        // Extract lvlText (the actual format like "%1." or "%1)")
-        const lvlTextMatch = lvlContent.match(/<w:lvlText[^>]*w:val="([^"]*)"/);
-        // Extract start value
-        const startMatch = lvlContent.match(/<w:start[^>]*w:val="(\d+)"/);
-
-        if (pStyleMatch) {
-          const styleId = pStyleMatch[1];
-          numberingFormats[styleId] = {
-            abstractNumId,
-            level,
+          abstractNumFormats[abstractNumId][level] = {
             numFmt: numFmtMatch ? numFmtMatch[1] : 'decimal',
             lvlText: lvlTextMatch ? lvlTextMatch[1] : '%1.',
             start: startMatch ? parseInt(startMatch[1], 10) : 1,
           };
         }
       }
+
+      // 2. Parse num elements (numId -> abstractNumId mappings)
+      const numRegex = /<w:num[^>]*w:numId="(\d+)"[^>]*>[\s\S]*?<w:abstractNumId[^>]*w:val="(\d+)"[^>]*\/>/g;
+      let numMatch;
+
+      while ((numMatch = numRegex.exec(numberingXml)) !== null) {
+        numIdToAbstractNumId[numMatch[1]] = numMatch[2];
+      }
+    }
+
+    if (documentXml) {
+      // 3. Build text-to-numId mapping for paragraphs with numbering
+      const paragraphRegex = /<w:p[^>]*>([\s\S]*?)<\/w:p>/g;
+      let pMatch;
+
+      while ((pMatch = paragraphRegex.exec(documentXml)) !== null) {
+        const pContent = pMatch[1];
+
+        // Check for numPr (numbering properties)
+        const numPrMatch = pContent.match(/<w:numPr>([\s\S]*?)<\/w:numPr>/);
+
+        if (numPrMatch) {
+          const numPrContent = numPrMatch[1];
+          const ilvlMatch = numPrContent.match(/<w:ilvl[^>]*w:val="(\d+)"/);
+          const numIdMatch = numPrContent.match(/<w:numId[^>]*w:val="(\d+)"/);
+
+          if (numIdMatch && numIdMatch[1] !== '0') {
+            // Extract text from this paragraph for matching
+            const text = extractTextFromXml(pContent);
+            if (text.trim()) {
+              // Use normalized text as key (trim, lowercase, first 100 chars)
+              const textKey = normalizeTextForMatching(text);
+              textToNumberingMap[textKey] = {
+                numId: numIdMatch[1],
+                ilvl: ilvlMatch ? parseInt(ilvlMatch[1], 10) : 0,
+              };
+            }
+          }
+        }
+      }
     }
   } catch (error) {
-    console.warn('Failed to parse numbering.xml:', error.message);
+    console.warn('Failed to parse numbering definitions:', error.message);
   }
+}
+
+/**
+ * Extract text content from Word XML paragraph content
+ */
+function extractTextFromXml(xmlContent) {
+  // Extract text from w:t elements
+  const textMatches = xmlContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+  return textMatches.map(m => m.replace(/<[^>]+>/g, '')).join('');
+}
+
+/**
+ * Normalize text for matching between document.xml and mammoth
+ */
+function normalizeTextForMatching(text) {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .substring(0, 100);
 }
 
 /**
@@ -127,6 +199,14 @@ let collectedParagraphs = [];
  * Reset numbering counters for a new document or section
  */
 function resetNumberingCounters() {
+  numberingCounters = {};
+}
+
+/**
+ * Reset all document state for a new document
+ */
+function resetDocumentState() {
+  collectedParagraphs = [];
   numberingCounters = {};
 }
 
@@ -213,70 +293,77 @@ function toRoman(num) {
 }
 
 /**
- * Get the list marker for a paragraph based on extracted numbering definitions
- * Uses the actual format from the Word document's numbering.xml
+ * Get the list marker for a paragraph using text-based correlation with document.xml
+ * This uses the actual numId from the document to track separate list instances
+ * @param {string} paragraphText - The text of the paragraph to match
  */
-function getListMarker(element) {
-  const numbering = element.numbering;
-  const styleName = element.styleName || '';
-  const styleId = element.styleId || styleName.replace(/\s+/g, '');
-
-  // If we have numbering info from mammoth
-  if (numbering) {
-    const level = parseInt(numbering.level, 10) || 0;
-
-    // Look up the format definition from numbering.xml
-    const formatDef = numberingFormats[styleId];
-
-    if (formatDef) {
-      // Use the actual format from the document
-      const counterKey = `${formatDef.abstractNumId}-${formatDef.level}`;
-
-      // Initialize or increment counter
-      if (!numberingCounters[counterKey]) {
-        numberingCounters[counterKey] = formatDef.start || 1;
-      } else {
-        numberingCounters[counterKey]++;
-      }
-
-      const currentNum = numberingCounters[counterKey];
-      const formattedNum = formatNumber(currentNum, formatDef.numFmt);
-
-      // Apply the lvlText format (e.g., "%1." or "%1)" or "(%1)")
-      // Replace %1, %2, etc. with the actual formatted number
-      let marker = formatDef.lvlText;
-      marker = marker.replace(/%\d+/g, formattedNum);
-
-      return marker;
-    }
-
-    // Fallback: use mammoth's numbering info if no format definition found
-    const isOrdered = numbering.isOrdered;
-    const counterKey = `fallback-${styleId}-${level}`;
-
-    if (isOrdered) {
-      if (!numberingCounters[counterKey]) {
-        numberingCounters[counterKey] = 1;
-      } else {
-        numberingCounters[counterKey]++;
-      }
-      return `${numberingCounters[counterKey]}.`;
-    } else {
-      // Unordered - use bullet
-      return '•';
-    }
+function getListMarker(paragraphText) {
+  if (!paragraphText) {
+    return null;
   }
 
-  // No numbering info from mammoth - check if style name indicates a bullet list
-  // This handles cases where Word uses style-based bullets without numbering definition
-  const styleNameLower = styleName.toLowerCase();
+  // Look up numbering info using normalized text
+  const textKey = normalizeTextForMatching(paragraphText);
+  const numInfo = textToNumberingMap[textKey];
+
+  if (!numInfo) {
+    return null; // No numbering found for this text
+  }
+
+  const { numId, ilvl } = numInfo;
+
+  // Get the abstractNumId for this numId
+  const abstractNumId = numIdToAbstractNumId[numId];
+
+  if (!abstractNumId) {
+    return null; // No abstract definition found
+  }
+
+  // Get the format definition for this level
+  const formatDef = abstractNumFormats[abstractNumId]?.[ilvl];
+
+  if (!formatDef) {
+    return null; // No format definition found
+  }
+
+  // Handle bullets - no counter needed
+  if (formatDef.numFmt === 'bullet') {
+    return '•';
+  }
+
+  // Track counter per numId-level combination (each list instance has its own counter)
+  const counterKey = `${numId}-${ilvl}`;
+
+  // Initialize or increment counter
+  if (numberingCounters[counterKey] === undefined) {
+    numberingCounters[counterKey] = formatDef.start || 1;
+  } else {
+    numberingCounters[counterKey]++;
+  }
+
+  const currentNum = numberingCounters[counterKey];
+  const formattedNum = formatNumber(currentNum, formatDef.numFmt);
+
+  // Apply the lvlText format (e.g., "%1." or "%1)" or "(%1)")
+  // Replace %1, %2, etc. with the actual formatted number
+  let marker = formatDef.lvlText;
+  marker = marker.replace(/%\d+/g, formattedNum);
+
+  return marker;
+}
+
+/**
+ * Legacy function to detect bullet lists from style names
+ * Used as fallback when numId is not available
+ */
+function getStyleBasedListMarker(styleName) {
+  const styleNameLower = (styleName || '').toLowerCase();
 
   if (styleNameLower.includes('punktlista')) {
     // Swedish: Punktlista = bullet list
     return '•';
   }
 
-  // No list marker needed
   return null;
 }
 
@@ -303,27 +390,29 @@ function shouldResetNumberingCounter(element, styleName) {
 
 function transformElement(element) {
   if (element.type === 'document') {
-    collectedParagraphs = [];
-    resetNumberingCounters();
+    resetDocumentState();
   }
 
   if (element.type === 'paragraph') {
     const styleName = element.styleName || 'Normal';
 
-    // Check if we should reset numbering counters
-    shouldResetNumberingCounter(element, styleName);
+    // Get the raw text first (needed for numbering lookup)
+    const rawText = extractTextFromElement(element);
 
-    // Get the raw text
-    let text = extractTextFromElement(element);
+    // Get list marker using text-based correlation with document.xml
+    let listMarker = getListMarker(rawText);
 
-    // Get list marker if this is a list item (uses extracted numbering definitions)
-    const listMarker = getListMarker(element);
+    // Fallback to style-based bullet detection
+    if (!listMarker) {
+      listMarker = getStyleBasedListMarker(styleName);
+    }
 
     // Prepend list marker to text if applicable
-    if (listMarker && text.trim()) {
-      text = `${listMarker} ${text.trim()}`;
+    let text;
+    if (listMarker && rawText.trim()) {
+      text = `${listMarker} ${rawText.trim()}`;
     } else {
-      text = text.trim();
+      text = rawText.trim();
     }
 
     if (text) {
@@ -416,7 +505,7 @@ export async function parseDocumentStructured(filePath) {
   await extractNumberingDefinitions(buffer);
 
   // Reset numbering counters for new document
-  resetNumberingCounters();
+  numberingCounters = {};
 
   // Custom style handling
   const result = await mammoth.convertToHtml(buffer, {
@@ -438,20 +527,23 @@ function processElement(element, paragraphs, tables, depth) {
   if (element.type === 'paragraph') {
     const styleName = element.styleName || 'Normal';
 
-    // Check if we should reset numbering counters
-    shouldResetNumberingCounter(element, styleName);
+    // Get the raw text first (needed for numbering lookup)
+    const rawText = extractTextFromElement(element);
 
-    // Get the raw text
-    let text = extractTextFromElement(element);
+    // Get list marker using text-based correlation with document.xml
+    let listMarker = getListMarker(rawText);
 
-    // Get list marker if this is a list item (uses extracted numbering definitions)
-    const listMarker = getListMarker(element);
+    // Fallback to style-based bullet detection
+    if (!listMarker) {
+      listMarker = getStyleBasedListMarker(styleName);
+    }
 
     // Prepend list marker to text if applicable
-    if (listMarker && text.trim()) {
-      text = `${listMarker} ${text.trim()}`;
+    let text;
+    if (listMarker && rawText.trim()) {
+      text = `${listMarker} ${rawText.trim()}`;
     } else {
-      text = text.trim();
+      text = rawText.trim();
     }
 
     if (text) {

@@ -3,48 +3,51 @@
     <!-- Node header -->
     <div
       :class="[
-        'flex items-start gap-2 py-2 px-2 rounded cursor-pointer hover:bg-gray-50 transition-colors',
+        'flex items-start gap-2 py-2 px-2 rounded hover:bg-gray-50 transition-colors',
         { 'bg-blue-50': isExpanded }
       ]"
       :style="{ paddingLeft: `${level * 1.5}rem` }"
-      @click="toggle"
     >
       <!-- Expand/collapse icon -->
       <button
         v-if="hasChildren"
-        class="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 flex-shrink-0 mt-0.5"
+        class="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 flex-shrink-0 mt-0.5 cursor-pointer"
+        @click.stop="toggle"
       >
         <font-awesome-icon :icon="isExpanded ? 'chevron-down' : 'chevron-right'" class="text-xs" />
       </button>
       <div v-else class="w-5 h-5 flex-shrink-0"></div>
 
-      <!-- Level indicator -->
-      <span
-        :class="[
-          'px-2 py-0.5 text-xs font-medium rounded flex-shrink-0',
-          levelColorClass
-        ]"
-      >
-        {{ levelLabel }}
-      </span>
+      <!-- Clickable content area - shows node details -->
+      <div class="flex-1 flex items-start gap-2 cursor-pointer" @click.stop="selectNode">
+        <!-- Level indicator -->
+        <span
+          :class="[
+            'px-2 py-0.5 text-xs font-medium rounded flex-shrink-0',
+            levelColorClass
+          ]"
+        >
+          {{ levelLabel }}
+        </span>
 
-      <!-- Node title -->
-      <div class="flex-1 min-w-0">
-        <div class="font-medium text-gray-900 truncate">{{ node.text || '(Untitled)' }}</div>
-        <div class="flex items-center gap-2 mt-0.5">
-          <span v-if="node.style" class="text-xs text-gray-400 font-mono" :title="node.style">{{ truncateStyle(node.style) }}</span>
-          <span v-if="node.chapterTitle" class="text-xs text-gray-500">{{ node.chapterTitle }}</span>
+        <!-- Node title -->
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-gray-900 truncate">{{ node.text || '(Untitled)' }}</div>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span v-if="node.style" class="text-xs text-gray-400 font-mono" :title="node.style">{{ truncateStyle(node.style) }}</span>
+            <span v-if="node.chapterTitle" class="text-xs text-gray-500">{{ node.chapterTitle }}</span>
+          </div>
         </div>
-      </div>
 
-      <!-- Stats -->
-      <div class="flex items-center gap-3 text-xs text-gray-500 flex-shrink-0">
-        <span v-if="node.children && node.children.length > 0">
-          {{ node.children.length }} sections
-        </span>
-        <span v-if="node.paragraphs && node.paragraphs.length > 0">
-          {{ node.paragraphs.length }} paragraphs
-        </span>
+        <!-- Stats -->
+        <div class="flex items-center gap-3 text-xs text-gray-500 flex-shrink-0">
+          <span v-if="node.children && node.children.length > 0">
+            {{ node.children.length }} sections
+          </span>
+          <span v-if="node.paragraphs && node.paragraphs.length > 0">
+            {{ node.paragraphs.length }} paragraphs
+          </span>
+        </div>
       </div>
     </div>
 
@@ -59,6 +62,7 @@
         :parent-id="nodeId"
         @toggle="$emit('toggle', $event)"
         @select-paragraph="$emit('select-paragraph', $event)"
+        @select-node="$emit('select-node', $event)"
       />
     </div>
 
@@ -131,7 +135,7 @@ export default {
       default: '0',
     },
   },
-  emits: ['toggle', 'select-paragraph'],
+  emits: ['toggle', 'select-paragraph', 'select-node'],
   data() {
     return {
       showAllParagraphs: false,
@@ -156,7 +160,7 @@ export default {
       if (this.node.chapterNumber) {
         return `Ch. ${this.node.chapterNumber}`
       }
-      const labels = ['Chapter', 'Section', 'Subsection', 'Punkt', 'Content']
+      const labels = ['Top', 'Section', 'Chapter', 'Subsection', 'Content']
       return labels[Math.min(nodeLevel - 1, labels.length - 1)] || `L${nodeLevel}`
     },
     levelColorClass() {
@@ -180,6 +184,9 @@ export default {
   methods: {
     toggle() {
       this.$emit('toggle', this.nodeId)
+    },
+    selectNode() {
+      this.$emit('select-node', this.node)
     },
     contentTypeClass(type) {
       const classes = {
