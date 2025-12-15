@@ -52,21 +52,129 @@ async function extractParagraphsWithStyles(buffer) {
 }
 
 let collectedParagraphs = [];
+let listCounters = {}; // Track numbering for each list level/type
+
+/**
+ * Reset list counters when starting a new document
+ */
+function resetListCounters() {
+  listCounters = {};
+}
+
+/**
+ * Get the list marker for a paragraph based on its numbering info
+ * Preserves original numbering/bullets from the Word document
+ */
+function getListMarker(element) {
+  const numbering = element.numbering;
+  if (!numbering) return null;
+
+  const level = numbering.level || 0;
+  const isOrdered = numbering.isOrdered;
+  const styleName = element.styleName || '';
+
+  // Create a unique key for this list context
+  const listKey = `${styleName}-${level}`;
+
+  // Check if this is a lettered list (Swedish: Bokstavslista)
+  const isLetteredList = styleName.toLowerCase().includes('bokstavslista') ||
+                         styleName.toLowerCase().includes('bokstavlista');
+
+  // Check if this is a bullet list (Swedish: Punktlista)
+  const isBulletList = styleName.toLowerCase().includes('punktlista');
+
+  // Check if this is a numbered list in legal text
+  const isNumberedLegalList = styleName.toLowerCase().includes('numrerad lista');
+
+  if (isBulletList) {
+    // Bullet point - use different bullets for different levels
+    const bullets = ['•', '◦', '▪', '▫'];
+    return bullets[level % bullets.length];
+  }
+
+  if (isLetteredList) {
+    // Lettered list (a, b, c, ...)
+    if (!listCounters[listKey]) {
+      listCounters[listKey] = 0;
+    }
+    listCounters[listKey]++;
+    const letter = String.fromCharCode(96 + listCounters[listKey]); // 'a', 'b', 'c', ...
+    return `${letter})`;
+  }
+
+  if (isNumberedLegalList || isOrdered) {
+    // Numbered list (1, 2, 3, ...)
+    if (!listCounters[listKey]) {
+      listCounters[listKey] = 0;
+    }
+    listCounters[listKey]++;
+    return `${listCounters[listKey]}.`;
+  }
+
+  // Default handling for other ordered/unordered lists
+  if (isOrdered) {
+    if (!listCounters[listKey]) {
+      listCounters[listKey] = 0;
+    }
+    listCounters[listKey]++;
+    return `${listCounters[listKey]}.`;
+  } else {
+    // Unordered - use bullet
+    return '•';
+  }
+}
+
+/**
+ * Check if a new paragraph should reset list counters
+ * (e.g., when moving to a different section or heading)
+ */
+function shouldResetListCounter(element, styleName) {
+  // Reset counters when encountering headings
+  if (styleName.toLowerCase().includes('rubrik') ||
+      styleName.toLowerCase().includes('heading')) {
+    resetListCounters();
+    return true;
+  }
+  // Reset when encountering content type markers
+  if (styleName.toLowerCase() === 'spalttext') {
+    resetListCounters();
+    return true;
+  }
+  return false;
+}
 
 function transformElement(element) {
   if (element.type === 'document') {
     collectedParagraphs = [];
+    resetListCounters();
   }
 
   if (element.type === 'paragraph') {
     const styleName = element.styleName || 'Normal';
-    const text = extractTextFromElement(element);
 
-    if (text.trim()) {
+    // Check if we should reset list counters
+    shouldResetListCounter(element, styleName);
+
+    // Get the raw text
+    let text = extractTextFromElement(element);
+
+    // Get list marker if this is a list item
+    const listMarker = getListMarker(element);
+
+    // Prepend list marker to text if applicable
+    if (listMarker && text.trim()) {
+      text = `${listMarker} ${text.trim()}`;
+    } else {
+      text = text.trim();
+    }
+
+    if (text) {
       collectedParagraphs.push({
         index: collectedParagraphs.length,
-        text: text.trim(),
+        text: text,
         style: styleName,
+        hasListMarker: !!listMarker,
+        listLevel: element.numbering?.level,
       });
     }
   }
@@ -139,6 +247,9 @@ export async function parseDocumentStructured(filePath) {
   const paragraphs = [];
   const tables = [];
 
+  // Reset list counters for new document
+  resetListCounters();
+
   // Custom style handling
   const result = await mammoth.convertToHtml(buffer, {
     transformDocument: (element) => {
@@ -158,7 +269,22 @@ export async function parseDocumentStructured(filePath) {
 function processElement(element, paragraphs, tables, depth) {
   if (element.type === 'paragraph') {
     const styleName = element.styleName || 'Normal';
-    const text = extractTextFromElement(element).trim();
+
+    // Check if we should reset list counters
+    shouldResetListCounter(element, styleName);
+
+    // Get the raw text
+    let text = extractTextFromElement(element);
+
+    // Get list marker if this is a list item
+    const listMarker = getListMarker(element);
+
+    // Prepend list marker to text if applicable
+    if (listMarker && text.trim()) {
+      text = `${listMarker} ${text.trim()}`;
+    } else {
+      text = text.trim();
+    }
 
     if (text) {
       paragraphs.push({
@@ -166,6 +292,8 @@ function processElement(element, paragraphs, tables, depth) {
         text,
         style: styleName,
         depth,
+        hasListMarker: !!listMarker,
+        listLevel: element.numbering?.level,
       });
     }
   }
