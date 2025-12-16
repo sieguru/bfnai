@@ -78,6 +78,12 @@
       >
         <div class="flex items-start gap-2">
           <span
+            class="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-gray-200 text-gray-600 font-mono"
+            :title="'Paragraph index: ' + para.index"
+          >
+            [{{ para.index }}]
+          </span>
+          <span
             v-if="para.pointNumber"
             class="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-blue-100 text-blue-800 font-mono font-semibold"
             :title="'Punkt ' + para.pointNumber"

@@ -40,7 +40,7 @@ export const getDocumentHierarchy = (id) => api.get(`/documents/${id}/hierarchy`
 
 export const updateDocumentStyles = (id, styles) => api.put(`/documents/${id}/styles`, { styles })
 
-export const processDocument = (id, options = {}) => api.post(`/documents/${id}/process`, options)
+export const processDocument = (id, options = {}) => api.post(`/documents/${id}/process`, { ...options, skipVectors: true }) // TODO: Remove skipVectors for production
 
 /**
  * Process document with SSE progress updates
@@ -58,7 +58,7 @@ export const processDocumentStream = async (id, options = {}, onProgress) => {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(options),
+    body: JSON.stringify({ ...options, skipVectors: true }), // TODO: Remove skipVectors for production
   })
 
   if (!response.ok) {

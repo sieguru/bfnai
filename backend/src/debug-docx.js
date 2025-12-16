@@ -49,7 +49,9 @@ function formatOutput(extractor, filePath) {
     if (style.basedOn) line += ` (based on: ${style.basedOn})`;
     if (style.outlineLevel !== null) line += ` [outline level: ${style.outlineLevel}]`;
 
-    if (style.numInfo) {
+    if (style.numberingDisabled) {
+      line += ` {NUMBERING DISABLED}`;
+    } else if (style.numInfo) {
       const abstractNumId = numIdToAbstractNumId[style.numInfo.numId];
       const formatDef = abstractNumFormats[abstractNumId]?.[style.numInfo.ilvl];
       line += ` {numId=${style.numInfo.numId}, level=${style.numInfo.ilvl}`;
@@ -57,6 +59,10 @@ function formatOutput(extractor, filePath) {
         line += `, fmt="${formatDef.numFmt}", text="${formatDef.lvlText}"`;
       }
       line += `}`;
+    } else if (style.numIdWithoutIlvl) {
+      line += ` {numId=${style.numIdWithoutIlvl}, ilvl INHERITED from parent}`;
+    } else if (style.ilvlOverride !== null && style.ilvlOverride !== undefined) {
+      line += ` {ilvl OVERRIDE: ${style.ilvlOverride} (inherits numId from parent)}`;
     }
 
     output.push(line);

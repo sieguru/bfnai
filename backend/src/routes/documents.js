@@ -272,7 +272,7 @@ router.post('/:id/process', async (req, res) => {
       return res.status(404).json({ error: true, message: 'Document not found' });
     }
 
-    const { styleMapping = {}, chunkSize = 500, chunkOverlap = 1 } = req.body;
+    const { styleMapping = {}, chunkSize = 500, chunkOverlap = 1, skipVectors = false } = req.body;
 
     // Update status to processing
     await Document.updateDocumentStatus(doc.id, Document.DocumentStatus.PROCESSING);
@@ -319,7 +319,9 @@ router.post('/:id/process', async (req, res) => {
 
     // Delete existing chunks for this document
     await Chunk.deleteChunksByDocumentId(doc.id);
-    await deleteByDocumentId(doc.id);
+    if (!skipVectors) {
+      await deleteByDocumentId(doc.id);
+    }
 
     // Save chunks to database
     const chunkIds = [];
@@ -340,9 +342,9 @@ router.post('/:id/process', async (req, res) => {
       chunkIds.push(chunkId);
     }
 
-    // Generate embeddings and store vectors (only if Qdrant is available)
+    // Generate embeddings and store vectors (only if Qdrant is available and not skipped)
     let vectorsCreated = false;
-    const qdrantAvailable = await isQdrantAvailable();
+    const qdrantAvailable = !skipVectors && await isQdrantAvailable();
 
     if (qdrantAvailable) {
       try {
@@ -441,7 +443,7 @@ router.post('/:id/process-stream', async (req, res) => {
       return;
     }
 
-    const { chunkSize = 500, chunkOverlap = 1 } = req.body;
+    const { chunkSize = 500, chunkOverlap = 1, skipVectors = false } = req.body;
 
     sendProgress('parsing', 5, 'Parsing document...');
     await Document.updateDocumentStatus(doc.id, Document.DocumentStatus.PROCESSING);
@@ -487,7 +489,9 @@ router.post('/:id/process-stream', async (req, res) => {
 
     // Delete existing chunks
     await Chunk.deleteChunksByDocumentId(doc.id);
-    await deleteByDocumentId(doc.id);
+    if (!skipVectors) {
+      await deleteByDocumentId(doc.id);
+    }
 
     sendProgress('saving', 25, 'Saving chunks to database...');
 
@@ -519,11 +523,13 @@ router.post('/:id/process-stream', async (req, res) => {
 
     sendProgress('saving', 30, 'Chunks saved to database');
 
-    // Generate embeddings and store vectors
+    // Generate embeddings and store vectors (skip if requested)
     let vectorsCreated = false;
-    const qdrantAvailable = await isQdrantAvailable();
+    const qdrantAvailable = !skipVectors && await isQdrantAvailable();
 
-    if (qdrantAvailable) {
+    if (skipVectors) {
+      sendProgress('skipped', 90, 'Skipping vector generation (debug mode)');
+    } else if (qdrantAvailable) {
       try {
         const embeddingInfo = getEmbeddingInfo();
         const texts = chunks.map(c => c.content);
@@ -607,6 +613,65 @@ router.post('/:id/process-stream', async (req, res) => {
 
     sendProgress('error', 0, error.message);
     res.end();
+  }
+});
+
+/**
+ * POST /api/documents/debug-parse
+ * Debug endpoint: Parse a document without database calls
+ * Accepts either a file path or document ID
+ */
+router.post('/debug-parse', async (req, res) => {
+  try {
+    const { filePath, documentId, showParagraphs = true, showChunks = false, styleMapping = {} } = req.body;
+
+    let targetPath;
+
+    if (filePath) {
+      // Direct file path provided
+      targetPath = filePath;
+    } else if (documentId) {
+      // Look up file path from document ID (only DB call we make)
+      const doc = await Document.getDocumentById(documentId);
+      if (!doc) {
+        return res.status(404).json({ error: true, message: 'Document not found' });
+      }
+      targetPath = join(__dirname, '..', '..', 'uploads', doc.filename);
+    } else {
+      return res.status(400).json({ error: true, message: 'Either filePath or documentId is required' });
+    }
+
+    console.log(`[DEBUG] Parsing: ${targetPath}`);
+
+    // Parse document (no DB calls)
+    const parsedDoc = await parseDocumentStructured(targetPath);
+
+    const result = {
+      success: true,
+      filePath: targetPath,
+      paragraphCount: parsedDoc.paragraphs.length,
+    };
+
+    // Include paragraphs if requested
+    if (showParagraphs) {
+      result.paragraphs = parsedDoc.paragraphs;
+    }
+
+    // Optionally chunk the document (no DB calls)
+    if (showChunks) {
+      const { chunks, hierarchy } = await chunkDocument(parsedDoc, styleMapping, {
+        maxChunkTokens: 500,
+        overlapParagraphs: 1,
+      });
+      result.chunkCount = chunks.length;
+      result.chunks = chunks;
+      result.hierarchy = hierarchy;
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Debug parse error:', error);
+    res.status(500).json({ error: true, message: error.message, stack: error.stack });
   }
 });
 
